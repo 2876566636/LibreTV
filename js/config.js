@@ -22,10 +22,18 @@ const SITE_CONFIG = {
 
 // API站点配置
 const API_SITES = {
+    maoyan: {
+        api: 'https://api.maoyanapi.top/api.php/provide/vod',
+        name: '猫眼资源',
+    },
+    hongniu: {
+        api: 'http://hongniuzy2.com/api.php/provide/vod/from/hnm3u8',
+        name: '红牛资源',
+    },
     dyttzy: {
         api: 'http://caiji.dyttzyapi.com/api.php/provide/vod',
         name: '电影天堂资源',
-        detail: 'http://caiji.dyttzyapi.com', 
+        detail: 'http://caiji.dyttzyapi.com',
     },
     ruyi: {
         api: 'https://cj.rycjapi.com/api.php/provide/vod',
@@ -39,48 +47,27 @@ const API_SITES = {
         api: 'https://tyyszy.com/api.php/provide/vod',
         name: '天涯资源',
     },
-    xiaomaomi: {
-        api: 'https://zy.xmm.hk/api.php/provide/vod',
-        name: '小猫咪资源',
-    },
     ffzy: {
         api: 'http://ffzy5.tv/api.php/provide/vod',
         name: '非凡影视',
-        detail: 'http://ffzy5.tv', 
-    },
-    heimuer: {
-        api: 'https://json.heimuer.xyz/api.php/provide/vod',
-        name: '黑木耳',
-        detail: 'https://heimuer.tv', 
+        detail: 'http://ffzy5.tv',
     },
     zy360: {
         api: 'https://360zy.com/api.php/provide/vod',
         name: '360资源',
     },
-    iqiyi: {
-        api: 'https://www.iqiyizyapi.com/api.php/provide/vod',
-        name: 'iqiyi资源',
-    },
     wolong: {
         api: 'https://wolongzyw.com/api.php/provide/vod',
         name: '卧龙资源',
-    }, 
-    hwba: {
-        api: 'https://cjhwba.com/api.php/provide/vod',
-        name: '华为吧资源',
     },
     jisu: {
         api: 'https://jszyapi.com/api.php/provide/vod',
         name: '极速资源',
-        detail: 'https://jszyapi.com', 
+        detail: 'https://jszyapi.com',
     },
     dbzy: {
         api: 'https://dbzy.tv/api.php/provide/vod',
         name: '豆瓣资源',
-    },
-    mozhua: {
-        api: 'https://mozhuazy.com/api.php/provide/vod',
-        name: '魔爪资源',
     },
     mdzy: {
         api: 'https://www.mdzyapi.com/api.php/provide/vod',
@@ -120,48 +107,46 @@ const API_SITES = {
         adult: true
     },
     ckzy: {
-    api: 'https://www.ckzy1.com',
-    name: 'CK资源',
-    adult: true
-},
-jkun: {
-    api: 'https://jkunzyapi.com',
-    name: 'jkun资源',
-    adult: true
-},
-bwzy: {
-    api: 'https://api.bwzym3u8.com',
-    name: '百万资源',
-    adult: true
-},
-souav: {
-    api: 'https://api.souavzy.vip',
-    name: 'souav资源',
-    adult: true
-},
-r155: {
-    api: 'https://155api.com',
-    name: '155资源',
-    adult: true
-},
-lsb: {
-    api: 'https://apilsbzy1.com',
-    name: 'lsb资源',
-    adult: true
-},
-huangcang: {
-    api: 'https://hsckzy.vip',
-    name: '黄色仓库',
-    adult: true,
-    detail: 'https://hsckzy.vip'
-},
-yutu: {
-    api: 'https://yutuzy10.com',
-    name: '玉兔资源',
-    adult: true
-}
-
-    //ARCHIVE https://telegra.ph/APIs-08-12
+        api: 'https://www.ckzy1.com',
+        name: 'CK资源',
+        adult: true
+    },
+    jkun: {
+        api: 'https://jkunzyapi.com',
+        name: 'jkun资源',
+        adult: true
+    },
+    bwzy: {
+        api: 'https://api.bwzym3u8.com',
+        name: '百万资源',
+        adult: true
+    },
+    souav: {
+        api: 'https://api.souavzy.vip',
+        name: 'souav资源',
+        adult: true
+    },
+    r155: {
+        api: 'https://155api.com',
+        name: '155资源',
+        adult: true
+    },
+    lsb: {
+        api: 'https://apilsbzy1.com',
+        name: 'lsb资源',
+        adult: true
+    },
+    huangcang: {
+        api: 'https://hsckzy.vip',
+        name: '黄色仓库',
+        adult: true,
+        detail: 'https://hsckzy.vip'
+    },
+    yutu: {
+        api: 'https://yutuzy10.com',
+        name: '玉兔资源',
+        adult: true
+    }
 };
 
 // 定义合并方法
