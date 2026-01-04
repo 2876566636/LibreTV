@@ -59,7 +59,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 初始检查成人API选中状态
     setTimeout(checkAdultAPIsSelected, 100);
+
+    parseParams();
 });
+
+function parseParams(){
+    const urlParams = new URLSearchParams(window.location.search);
+    const showAdult = urlParams.get('showAdult');
+    // console.log('showAdult:', showAdult);
+    let adultSwitchContainer = document.getElementById('adultSwitchContainer');
+    if (showAdult === 'true') {
+        adultSwitchContainer.style.display = ''
+    } else {
+        const yellowFilterToggle = document.getElementById('yellowFilterToggle');
+        // 手动触发change事件
+        yellowFilterToggle.checked = true
+        const event = new Event('change');
+        yellowFilterToggle.dispatchEvent(event);
+        adultSwitchContainer.style.display = 'none'
+    }
+}
 
 // 初始化API复选框
 function initAPICheckboxes() {
