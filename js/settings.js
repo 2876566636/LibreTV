@@ -1140,6 +1140,22 @@
             doubanToggle.checked = localStorage.getItem('doubanEnabled') === 'true';
         }
 
+        // 首页推荐条数（可手动输入，范围 1-50）
+        const doubanSizeInput = document.getElementById('doubanPageSizeInput');
+        if (doubanSizeInput) {
+            doubanSizeInput.value = String(getDoubanPageSize());
+            doubanSizeInput.addEventListener('change', function () {
+                const parsed = Number.parseInt(doubanSizeInput.value, 10);
+                const size = Math.min(50, Math.max(1, Number.isFinite(parsed) ? parsed : getDoubanPageSize()));
+                localStorage.setItem(DOUBAN_PAGE_SIZE_KEY, String(size));
+                doubanSizeInput.value = String(size);
+                // 立即按新条数重新加载推荐
+                if (typeof window.applyDoubanPageSize === 'function') {
+                    window.applyDoubanPageSize();
+                }
+            });
+        }
+
         // 搜索历史条数（可手动输入，范围 1-50）
         const historyLimitInput = document.getElementById('searchHistoryLimitInput');
         if (historyLimitInput) {

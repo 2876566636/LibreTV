@@ -15,6 +15,18 @@ function getMaxHistoryItems() {
     return DEFAULT_MAX_HISTORY_ITEMS;
 }
 
+// 首页豆瓣推荐每次加载的条目数，范围 1-50，默认 16
+const DOUBAN_PAGE_SIZE_KEY = 'doubanPageSize';
+const DEFAULT_DOUBAN_PAGE_SIZE = 16;
+
+function getDoubanPageSize() {
+    const value = Number.parseInt(localStorage.getItem(DOUBAN_PAGE_SIZE_KEY), 10);
+    if (Number.isFinite(value) && value >= 1 && value <= 50) {
+        return value;
+    }
+    return DEFAULT_DOUBAN_PAGE_SIZE;
+}
+
 // 密码保护配置
 // 注意：PASSWORD 环境变量是必需的，所有部署都必须设置密码以确保安全
 const PASSWORD_CONFIG = {

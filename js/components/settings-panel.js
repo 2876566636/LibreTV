@@ -179,6 +179,13 @@
                     </div>
                     <input id="searchHistoryLimitInput" class="settings-number-input" type="number" min="1" max="50" step="1" inputmode="numeric" aria-label="搜索历史条数">
                 </div>
+                <div class="settings-row">
+                    <div class="settings-row-text">
+                        <div class="settings-row-title">首页推荐条数</div>
+                        <p class="settings-row-desc">豆瓣热门每次加载的条目数，范围 1–50；修改后立即重新加载，实际条数以接口返回为准</p>
+                    </div>
+                    <input id="doubanPageSizeInput" class="settings-number-input" type="number" min="1" max="50" step="1" inputmode="numeric" aria-label="首页推荐条数">
+                </div>
             </div>
 
             <div class="settings-section">
@@ -251,6 +258,6 @@
 
     window.Components.define('settings', {
         template: template,
-        script: 'js/settings.js?v=20261110-20'
+        script: 'js/settings.js?v=20261110-21'
     });
 })();

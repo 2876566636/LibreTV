@@ -51,7 +51,7 @@ function saveUserTags() {
 let doubanMovieTvCurrentSwitch = 'movie';
 let doubanCurrentTag = '热门';
 let doubanPageStart = 0;
-const doubanPageSize = 16; // 一次显示的项目数量
+let doubanPageSize = typeof getDoubanPageSize === 'function' ? getDoubanPageSize() : 16; // 一次加载的条目数（设置页可配）
 
 // 初始化豆瓣功能
 function initDouban() {
@@ -319,6 +319,18 @@ function renderDoubanTags(tags) {
         tagContainer.appendChild(btn);
     });
 }
+
+// 设置页修改「首页推荐条数」后立即生效：重置分页并从第一屏重新加载。
+// 仅在豆瓣区域可见（即不在搜索结果页）时触发请求。
+window.applyDoubanPageSize = function () {
+    doubanPageSize = typeof getDoubanPageSize === 'function' ? getDoubanPageSize() : 16;
+    doubanPageStart = 0;
+    const area = document.getElementById('doubanArea');
+    if (area && !area.classList.contains('hidden') &&
+        localStorage.getItem('doubanEnabled') === 'true') {
+        renderRecommend(doubanCurrentTag, doubanPageSize, doubanPageStart);
+    }
+};
 
 // 设置换一批按钮事件
 function setupDoubanRefreshBtn() {

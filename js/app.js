@@ -653,6 +653,7 @@ async function exportConfig() {
         'adFilteringEnabled',
         'doubanEnabled',
         'searchHistoryLimit',
+        'doubanPageSize',
         'hasInitializedDefaults'
     ];
 
