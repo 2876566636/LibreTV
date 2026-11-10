@@ -1,3 +1,7 @@
+:root {
+    --player-header-h: 56px;
+}
+
 body, html {
     margin: 0;
     padding: 0;
@@ -5,7 +9,7 @@ body, html {
     height: 100%;
     background-color: #0f1622;
     color: white;
-    padding-top: 37px;
+    padding-top: var(--player-header-h);
 }
 
 /* Critical header and navigation styles */
@@ -19,20 +23,114 @@ body, html {
     position: fixed !important;
     top: 0;
     left: 0;
+    box-sizing: border-box;
     width: 100vw;
+    height: var(--player-header-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
     z-index: 9000 !important;
     pointer-events: auto !important;
-    background: #111;
+    background: rgba(15, 22, 34, 0.94);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-#homeButton { 
-    pointer-events: auto !important; 
+/* 标题栏左右按钮：返回首页 / 返回上一页 */
+.player-nav-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    color: #cbd5e1;
+    text-decoration: none;
+    background: #1a2230;
+    border: 1px solid #2b3543;
+    border-radius: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
 }
 
-.home-button {
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
+.player-nav-btn:hover {
+    color: #fff;
+    background: #212c3b;
+    border-color: #3b4757;
+}
+
+.player-nav-btn:active {
+    transform: scale(0.96);
+}
+
+.player-nav-btn:focus-visible {
+    outline: 2px solid #00ccff;
+    outline-offset: 1px;
+}
+
+.player-nav-btn svg {
+    flex: none;
+    width: 17px;
+    height: 17px;
+    color: #cbd5e1;
+    transition: color 0.18s ease;
+}
+
+.player-nav-btn:hover svg {
+    color: #7dd3fc;
+}
+
+/* 标题 */
+.player-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: #eef4ff;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --player-header-h: 52px;
+    }
+
+    .player-header-fixed {
+        gap: 8px;
+        padding: 0 10px;
+    }
+
+    .player-nav-btn {
+        width: 36px;
+        padding: 0;
+        gap: 0;
+    }
+
+    .player-nav-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* 窄屏只保留图标，把空间留给标题 */
+    .player-nav-text {
+        display: none;
+    }
+
+    .player-title {
+        font-size: 15px;
+    }
 }
 
 /* Critical loading styles to prevent FOUC */

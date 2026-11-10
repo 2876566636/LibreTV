@@ -844,25 +844,7 @@ body {
 .custom-title-scroll::-webkit-scrollbar {
     display: none;
 }
-.logo-text {
-    display: inline;
-}
-.home-btn-text {
-    display: inline;
-}
 @media (max-width: 640px) {
-    .logo-text {
-        display: none;
-    }
-    .home-btn-text {
-        display: none;
-    }
-    .logo-icon {
-        margin-right: 0;
-    }
-    .home-btn svg {
-        margin-right: 0;
-    }
     .player-header {
         padding-left: 2px !important;
         padding-right: 2px !important;
@@ -2037,5 +2019,133 @@ body.settings-dialog-open {
         top: -12px;
         margin: 0 -16px;
         padding: 10px 16px 8px;
+    }
+}
+
+/* ---------- 首页搜索栏 ---------- */
+
+.search-bar {
+    display: flex;
+    align-items: stretch;
+    height: 3.5rem;
+    margin-bottom: 0.75rem;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-bar:focus-within {
+    border-color: #3f7183;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(0, 204, 255, 0.2);
+}
+
+.search-bar-btn {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    padding: 0;
+    color: #0b0b0b;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.search-bar-btn:hover {
+    background: #e7e7e9;
+}
+
+.search-bar-btn:active {
+    background: #d6d6da;
+}
+
+.search-bar-btn:focus-visible {
+    outline: 2px solid #00ccff;
+    outline-offset: -3px;
+}
+
+.search-bar-btn svg {
+    width: 1.375rem;
+    height: 1.375rem;
+}
+
+.search-bar-btn-search svg {
+    stroke-width: 2.1;
+}
+
+.search-bar-input {
+    flex: 1;
+    min-width: 0;
+    padding: 0 1rem;
+    font-size: 0.95rem;
+    color: #f4f4f5;
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+.search-bar-input::placeholder {
+    color: #6b7280;
+}
+
+.search-bar-input {
+    caret-color: #00ccff;
+}
+
+.search-bar-clear {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    padding: 0;
+    color: #9ca3af;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.18s ease;
+}
+
+.search-bar-clear:hover {
+    color: #fff;
+}
+
+.search-bar-clear svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+/* Tailwind 的 .hidden 同优先级，需显式声明，避免被 display:flex 覆盖 */
+.search-bar-clear.hidden {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .search-bar {
+        height: 3rem;
+        border-radius: 12px;
+        margin-bottom: 0.6rem;
+    }
+
+    .search-bar-btn {
+        width: 3rem;
+    }
+
+    .search-bar-btn svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .search-bar-input {
+        padding: 0 0.75rem;
+        /* iOS 输入框字号小于 16px 聚焦会自动放大页面 */
+        font-size: 16px;
     }
 }
