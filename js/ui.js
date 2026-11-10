@@ -19,8 +19,19 @@ function toggleSettings(e) {
     }
     // 阻止事件冒泡，防止触发document的点击事件
     e && e.stopPropagation();
+
+    // 设置面板逻辑由组件按需加载：首次打开时先等脚本就绪，
+    // 避免点到尚未绑定事件的控件；已加载时 Promise 立即 resolve。
+    if (window.Components && typeof window.Components.ensure === 'function') {
+        window.Components.ensure('settings').then(function () {
+            const target = document.getElementById('settingsPanel');
+            if (target) target.classList.toggle('show');
+        });
+        return;
+    }
+
     const panel = document.getElementById('settingsPanel');
-    panel.classList.toggle('show');
+    if (panel) panel.classList.toggle('show');
 }
 
 // 改进的Toast显示函数 - 支持队列显示多个Toast
@@ -379,6 +390,35 @@ function getViewingHistory() {
     }
 }
 
+// 历史项里的 sourceName 存的是视频源接口地址（selectedAPIs 用 url 作 id），
+// 直接展示会是一长串 URL。按 url / custom_N 解析成可读的资源名称。
+// sourceName 同时被 playFromHistory 用作 /api/detail 的 source 参数，不能改它的值。
+function resolveHistorySourceName(item) {
+    const raw = item.sourceLabel || item.sourceName || item.sourceCode || '';
+    if (!raw) return '未知来源';
+
+    // 内置源：按 url 从 API_SITES 查名称
+    if (typeof getAPISite === 'function') {
+        const site = getAPISite(raw);
+        if (site && site.name) return site.name;
+    }
+
+    // 自定义源：custom_N
+    if (/^custom_/i.test(raw)) {
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('customAPIs') || '[]'); } catch (e) { list = []; }
+        const index = parseInt(raw.replace(/^custom_/i, ''), 10);
+        if (list[index] && list[index].name) return list[index].name;
+        return '自定义资源';
+    }
+
+    // 旧数据本身可能就存的是显示名
+    if (!/^https?:\/\//i.test(raw)) return raw;
+
+    // 源已被移除或换了地址：显示主机名，比整条 URL 可读
+    try { return new URL(raw).hostname; } catch (e) { return raw; }
+}
+
 // 加载观看历史并渲染
 function loadViewingHistory() {
     const historyList = document.getElementById('historyList');
@@ -394,14 +434,15 @@ function loadViewingHistory() {
     // 渲染历史记录
     historyList.innerHTML = history.map(item => {
         // 防止XSS
-        const safeTitle = item.title
+        const safeTitle = String(item.title || '未知视频')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
 
-        const safeSource = item.sourceName ?
-            item.sourceName.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') :
-            '未知来源';
+        const safeSource = resolveHistorySourceName(item)
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
 
         const episodeText = item.episodeIndex !== undefined ?
             `第${item.episodeIndex + 1}集` : '';

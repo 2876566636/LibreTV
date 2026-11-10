@@ -224,6 +224,12 @@ app.get('/proxy/:encodedUrl', async (req, res) => {
     ).split(',');
     
     sensitiveHeaders.forEach(header => delete headers[header]);
+    // axios 会自动解压 gzip/br，源站的 content-length 是压缩后的长度。若原样透传，
+    // 客户端会按错误长度提前结束读取（表现为 HTML/JSON 被截断一半，分享页里的
+    // `const url` 就拿不到了）。删掉这几个头，改由 Express 以 chunked 重新计算。
+    ['content-length', 'content-encoding', 'transfer-encoding'].forEach(function (header) {
+      delete headers[header];
+    });
     res.set(headers);
 
     // 管道传输响应流

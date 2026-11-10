@@ -13,14 +13,15 @@
 
     <script src="libs/tailwindcss.min.js"></script>
     <script src="js/version-check.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261110-26">
+    <link rel="stylesheet" href="css/styles.css?v=20261110-27">
+    <link rel="stylesheet" href="css/components/modal.css?v=20261110-1">
     <link rel="stylesheet" href="css/player.css?v=20261110-2">
     
     <meta http-equiv="Cache-Control" content="no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
-<body>
+<body data-modal-variant="switch">
     <header class="player-header-fixed">
         <button id="homeButton" type="button" class="player-nav-btn" aria-label="返回首页" title="返回首页">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -127,7 +128,7 @@
                     </button>
                     
                     <!-- 复制链接按钮 -->
-                    <button title="复制播放链接" onclick="copyLinks()" class="px-2 py-1 bg-[#222] hover:bg-[#333] border border-[#333] text-white rounded-lg transition">
+                    <button title="复制播放链接" aria-label="复制播放链接" onclick="copyLinks()" class="px-2 py-1 bg-[#222] hover:bg-[#333] border border-[#333] text-white rounded-lg transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 012-2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                         </svg>
@@ -194,19 +195,8 @@
         </div>
     </footer>
 
-    <!-- 换源模态框 -->
-    <div id="modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center transition-opacity duration-300 z-[10000]">
-        <div class="bg-[#111] p-8 rounded-lg w-11/12 max-w-4xl border border-[#333] max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-6 flex-none">
-                <h2 id="modalTitle" class="text-2xl font-bold gradient-text break-words pr-4 max-w-[80%]"></h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl transition-colors flex-shrink-0">&times;</button>
-            </div>
-            <div id="modalContent" class="overflow-auto flex-1 min-h-0">
-                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- 模态框外壳组件挂载点（js/components/modal-shell.js） -->
+    <div id="modal-root"></div>
 
     <!-- 添加 loading 提示框 -->
     <div id="loading" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001]">
@@ -228,14 +218,17 @@
 
     <script src="js/api-sites.js?v=20261110-8"></script>
     <script src="js/config.js?v=20261110-9"></script>
+    <script src="js/components/component-registry.js?v=20261110-2"></script>
+    <script src="js/components/modal-shell.js?v=20261110-1"></script>
+    <script>window.Components.mountAll();</script>
     <script src="js/overlay-guard.js?v=20261110-2"></script>
     <script src="js/proxy-auth.js"></script>
     <script src="js/customer_site.js"></script>
-    <script src="js/password.js"></script>
-    <script src="js/ui.js"></script>
+    <script src="js/password.js?v=20261110-1"></script>
+    <script src="js/ui.js?v=20261110-12"></script>
     <script src="js/api.js?v=20261110-8"></script>
     <script src="js/search.js?v=20261110-6"></script>
-    <script src="js/player.js?v=20261110-3"></script>
+    <script src="js/player.js?v=20261110-6"></script>
 
     <script>
         // 创建全局环境变量对象

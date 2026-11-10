@@ -240,9 +240,15 @@ function initializePageContent() {
     document.title = currentVideoTitle + ' - LibreTV播放器';
     document.getElementById('videoTitle').textContent = currentVideoTitle;
 
-    // 初始化播放器
+    // 初始化播放器（先解析分享页 HTML 里隐藏的真实播放地址）
     if (videoUrl) {
-        initPlayer(videoUrl);
+        resolvePlayableUrl(videoUrl).then(function (resolved) {
+            currentVideoUrl = resolved;
+            initPlayer(resolved);
+        }).catch(function (error) {
+            console.warn('分享页解析失败，使用原始地址:', error);
+            initPlayer(videoUrl);
+        });
     } else {
         showError('无效的视频链接');
     }
@@ -415,6 +421,32 @@ function showShortcutHint(text, direction) {
     }, 2000);
 }
 
+// 采集站有时返回的不是 m3u8/mp4，而是带播放器的「分享页」HTML，
+// 真实地址藏在页面里的 `const url = "..."`（可能是相对路径）。直接把 HTML
+// 交给 hls.js 会解析失败并一直停在「加载中」，这里先经本地 /proxy/ 取出页面再解析。
+async function resolvePlayableUrl(rawUrl) {
+    if (!rawUrl) return rawUrl;
+    // 明确的媒体文件无需解析
+    if (/\.(m3u8|mp4|m4v|webm|mkv|avi|mov|flv|f4v|3gp|mp3|m4a|aac)(\?|#|$)/i.test(rawUrl)) return rawUrl;
+    // 只处理 /share/ 这类分享页，避免对普通未知地址多发一次请求
+    if (rawUrl.indexOf('/share/') === -1) return rawUrl;
+
+    let target = PROXY_URL + encodeURIComponent(rawUrl);
+    if (window.ProxyAuth && typeof window.ProxyAuth.addAuthToProxyUrl === 'function') {
+        target = await window.ProxyAuth.addAuthToProxyUrl(target);
+    }
+    const response = await fetch(target);
+    if (!response.ok) return rawUrl;
+    const html = await response.text();
+    const match = html.match(/(?:const|let|var)\s+url\s*=\s*["']([^"']+)["']/i);
+    if (!match || !match[1]) return rawUrl;
+    try {
+        return new URL(match[1], rawUrl).toString();
+    } catch (e) {
+        return rawUrl;
+    }
+}
+
 // 初始化播放器
 function initPlayer(videoUrl) {
     if (!videoUrl) {
@@ -494,6 +526,58 @@ function initPlayer(videoUrl) {
         },
         customType: {
             m3u8: function (video, url) {
+                // 移动端兼容：iOS Safari / 微信 WKWebView 等不支持 MSE，hls.js 无法工作，
+                // 但这些浏览器原生支持 HLS；采集站也常返回 mp4 等直链，被当成 m3u8
+                // 交给 hls.js 会解析失败。两种情况都直接把地址交给 <video> 原生播放。
+                const isDirectMedia = /\.(mp4|m4v|webm|mkv|avi|mov|flv|f4v|3gp|mp3|m4a|aac)(\?|#|$)/i.test(url);
+                if (isDirectMedia || typeof Hls === 'undefined' || !Hls.isSupported()) {
+                    // 原生 HLS/直链播放时强制 CORS 会被无 CORS 头的源站拒绝
+                    video.removeAttribute('crossorigin');
+
+                    const hideLoading = function () {
+                        const el = document.getElementById('player-loading');
+                        if (el) el.style.display = 'none';
+                        const overlay = document.querySelector('#player .player-loading-overlay');
+                        if (overlay) overlay.style.display = 'none';
+                        const err = document.getElementById('error');
+                        if (err) err.style.display = 'none';
+                    };
+
+                    let mediaReady = false;
+                    const markReady = function () {
+                        mediaReady = true;
+                        hideLoading();
+                    };
+                    video.addEventListener('loadedmetadata', markReady);
+                    video.addEventListener('canplay', markReady);
+                    video.addEventListener('playing', markReady);
+
+                    video.src = url;
+                    const playPromise = video.play();
+                    if (playPromise && typeof playPromise.catch === 'function') {
+                        playPromise.catch(function () {
+                            // 移动端禁止有声自动播放：给出可点击提示，不要一直转圈
+                            const el = document.getElementById('player-loading');
+                            if (!el) return;
+                            el.style.display = 'flex';
+                            el.style.cursor = 'pointer';
+                            el.innerHTML = '<div style="padding:12px 20px;border-radius:8px;background:rgba(0,0,0,.6);color:#fff;font-size:15px;cursor:pointer;">点击播放</div>';
+                            el.onclick = function () {
+                                const p = video.play();
+                                if (p && typeof p.then === 'function') p.then(hideLoading).catch(function () {});
+                            };
+                        });
+                    }
+
+                    // 兜底：15 秒仍拿不到元数据就报错，避免无限「加载中」
+                    setTimeout(function () {
+                        if (!mediaReady && (!video.readyState || video.readyState < 1)) {
+                            showError('视频加载超时，请检查播放链接或换一个视频源');
+                        }
+                    }, 15000);
+                    return;
+                }
+
                 // 清理之前的HLS实例
                 if (currentHls && currentHls.destroy) {
                     try {
@@ -529,6 +613,15 @@ function initPlayer(videoUrl) {
                         document.getElementById('error').style.display = 'none';
                     }
                 });
+
+                // hls.js 遇到 NETWORK_ERROR 会无限重试，给一个总超时，
+                // 避免手机端一直停在「加载中」而没有任何反馈。
+                // 若之后加载成功，playing 事件会把错误提示重新隐藏。
+                setTimeout(function () {
+                    if (!playbackStarted) {
+                        showError('视频加载超时，请检查网络或换一个视频源');
+                    }
+                }, 20000);
 
                 hls.loadSource(url);
                 hls.attachMedia(video);
@@ -953,11 +1046,20 @@ function playEpisode(index) {
     currentUrl.searchParams.delete('position');
     window.history.replaceState({}, '', currentUrl.toString());
 
-    if (isWebkit) {
-        initPlayer(url);
-    } else {
-        art.switch = url;
-    }
+    resolvePlayableUrl(url).then(function (resolved) {
+        currentVideoUrl = resolved;
+        if (isWebkit) {
+            initPlayer(resolved);
+        } else if (art) {
+            art.switch = resolved;
+        }
+    }).catch(function () {
+        if (isWebkit) {
+            initPlayer(url);
+        } else if (art) {
+            art.switch = url;
+        }
+    });
 
     // 更新UI
     updateEpisodeInfo();
@@ -986,16 +1088,60 @@ function playNextEpisode() {
 }
 
 // 复制播放链接
+// 手机经局域网 HTTP 访问属于非安全上下文，navigator.clipboard 不存在；直接调用会
+// 同步抛 TypeError，连 .catch() 都进不去，表现为按钮点了没反应，必须有 execCommand 兜底。
 function copyLinks() {
-    // 尝试从URL中获取参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const linkUrl = urlParams.get('url') || '';
-    if (linkUrl !== '') {
-        navigator.clipboard.writeText(linkUrl).then(() => {
-            showToast('播放链接已复制', 'success');
-        }).catch(err => {
-            showToast('复制失败，请检查浏览器权限', 'error');
+    const linkUrl = new URLSearchParams(window.location.search).get('url') || '';
+    if (!linkUrl) {
+        showToast('当前没有可复制的播放链接', 'error');
+        return;
+    }
+
+    const legacyCopy = function (text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.width = '1px';
+        textarea.style.height = '1px';
+        textarea.style.opacity = '0';
+        textarea.style.fontSize = '16px'; // 防 iOS 聚焦缩放
+        document.body.appendChild(textarea);
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            // iOS Safari 上只读 textarea 无法直接 select，需 contentEditable + Range
+            textarea.contentEditable = 'true';
+            textarea.readOnly = true;
+            const range = document.createRange();
+            range.selectNodeContents(textarea);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            textarea.setSelectionRange(0, 999999);
+        } else {
+            textarea.select();
+            textarea.setSelectionRange(0, text.length);
+        }
+
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(textarea);
+        return ok;
+    };
+
+    const done = function () { showToast('播放链接已复制', 'success'); };
+    const fail = function () { showToast('复制失败，请检查浏览器权限', 'error'); };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(linkUrl).then(done).catch(function () {
+            legacyCopy(linkUrl) ? done() : fail();
         });
+    } else {
+        legacyCopy(linkUrl) ? done() : fail();
     }
 }
 

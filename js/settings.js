@@ -1213,6 +1213,12 @@
     // ---------------- 初始化 ----------------
 
     function ensureDefaults() {
+        // 默认值初始化已前移到 js/settings-bootstrap.js（首屏执行），
+        // 保证 settings.js 按需加载时首次搜索仍有可用视频源。
+        if (typeof window.ensureDefaultAPIs === 'function') {
+            window.ensureDefaultAPIs();
+            return;
+        }
         const sites = (typeof API_SITES !== 'undefined' && API_SITES) || [];
         const siteList = Array.isArray(sites) ? sites : [];
 
