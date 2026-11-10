@@ -122,12 +122,11 @@
                 <div class="settings-row settings-row-stack">
                     <div class="settings-row-text">
                         <div class="settings-row-title">播放缓冲</div>
-                        <p class="settings-row-desc" id="bufferLevelDesc">均衡：默认缓冲，兼顾起播速度与流畅度</p>
+                        <p class="settings-row-desc" id="bufferLevelDesc">默认预加载 30 秒；可填 1–300 秒，下次打开播放器生效</p>
                     </div>
-                    <div class="settings-segment" id="bufferLevelSegment" role="group" aria-label="播放缓冲">
-                        <button type="button" data-level="low">低</button>
-                        <button type="button" data-level="normal">均衡</button>
-                        <button type="button" data-level="high">高</button>
+                    <div class="settings-buffer-field">
+                        <input id="bufferSecondsInput" class="settings-number-input" type="number" min="1" max="300" step="1" inputmode="numeric" aria-label="缓冲秒数" placeholder="默认 30">
+                        <span class="settings-buffer-unit">秒</span>
                     </div>
                 </div>
             </div>
@@ -252,6 +251,6 @@
 
     window.Components.define('settings', {
         template: template,
-        script: 'js/settings.js?v=20261110-17'
+        script: 'js/settings.js?v=20261110-20'
     });
 })();

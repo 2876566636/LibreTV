@@ -648,7 +648,7 @@ async function exportConfig() {
         'apiSourceOrder',
         'mobileGestureEnabled',
         'longPressSpeedRate',
-        'playbackBufferLevel',
+        'playbackBufferSeconds',
         'yellowFilterEnabled',
         'adFilteringEnabled',
         'doubanEnabled',

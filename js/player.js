@@ -9,16 +9,18 @@ const longPressSpeedRate = (function () {
     return Number.isFinite(value) && value >= 1 && value <= 5 ? value : 3;
 })();
 
-const playbackBufferLevel = (function () {
-    const value = localStorage.getItem('playbackBufferLevel');
-    return ['low', 'normal', 'high'].indexOf(value) !== -1 ? value : 'normal';
+// 播放缓冲时长（秒），由设置页写入；留空或非法时用默认 30 秒。
+// 其它 hls.js 参数按秒数等比推导。
+const playbackBufferProfile = (function () {
+    const seconds = parseInt(localStorage.getItem('playbackBufferSeconds'), 10);
+    const value = Number.isFinite(seconds) && seconds >= 1 && seconds <= 300 ? seconds : 30;
+    return {
+        maxBufferLength: value,
+        maxMaxBufferLength: value * 2,
+        maxBufferSize: value * 1000 * 1000,
+        backBufferLength: value * 3
+    };
 })();
-
-const PLAYBACK_BUFFER_PROFILES = {
-    low: { maxBufferLength: 10, maxMaxBufferLength: 20, maxBufferSize: 10 * 1000 * 1000, backBufferLength: 30 },
-    normal: { maxBufferLength: 30, maxMaxBufferLength: 60, maxBufferSize: 30 * 1000 * 1000, backBufferLength: 90 },
-    high: { maxBufferLength: 60, maxMaxBufferLength: 120, maxBufferSize: 60 * 1000 * 1000, backBufferLength: 120 }
-};
 
 // 改进返回功能
 function goBack(event) {
@@ -460,7 +462,7 @@ function initPlayer(videoUrl) {
     }
 
     // 配置HLS.js选项（缓冲档位来自设置面板）
-    const bufferProfile = PLAYBACK_BUFFER_PROFILES[playbackBufferLevel] || PLAYBACK_BUFFER_PROFILES.normal;
+    const bufferProfile = playbackBufferProfile;
     const hlsConfig = {
         debug: false,
         loader: adFilteringEnabled ? CustomHlsJsLoader : Hls.DefaultConfig.loader,

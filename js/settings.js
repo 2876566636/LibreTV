@@ -9,7 +9,7 @@
  * - selectedAPIs              启用的视频源 id（内置为 key，自定义为 custom_N）
  * - mobileGestureEnabled      移动端手势开关
  * - longPressSpeedRate        长按倍速倍率
- * - playbackBufferLevel       播放缓冲档位 low | normal | high
+ * - playbackBufferSeconds     播放缓冲秒数（默认 30）
  */
 (function () {
     'use strict';
@@ -18,35 +18,10 @@
     const ACTIVE_TAB_KEY = 'settingsActiveTab';
     const GESTURE_KEY = 'mobileGestureEnabled';
     const LONG_PRESS_KEY = 'longPressSpeedRate';
-    const BUFFER_KEY = 'playbackBufferLevel';
+    const BUFFER_SECONDS_KEY = 'playbackBufferSeconds';
+    const BUFFER_SECONDS_MIN = 1;
+    const BUFFER_SECONDS_MAX = 300;
     const DEFAULT_LONG_PRESS_RATE = 3;
-
-    const BUFFER_PROFILES = {
-        low: {
-            label: '低',
-            desc: '低：起播更快、更省流量；弱网下更容易卡顿',
-            maxBufferLength: 10,
-            maxMaxBufferLength: 20,
-            maxBufferSize: 10 * 1000 * 1000,
-            backBufferLength: 30
-        },
-        normal: {
-            label: '均衡',
-            desc: '均衡：默认缓冲，兼顾起播速度与流畅度',
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            maxBufferSize: 30 * 1000 * 1000,
-            backBufferLength: 90
-        },
-        high: {
-            label: '高',
-            desc: '高：预加载更多内容，弱网更抗卡顿；占用更多内存',
-            maxBufferLength: 60,
-            maxMaxBufferLength: 120,
-            maxBufferSize: 60 * 1000 * 1000,
-            backBufferLength: 120
-        }
-    };
 
     const sourceHealth = new Map();
     let testing = false;
@@ -1074,9 +1049,10 @@
         return Number.isFinite(value) && value >= 1 && value <= 5 ? value : DEFAULT_LONG_PRESS_RATE;
     }
 
-    function getBufferLevel() {
-        const value = localStorage.getItem(BUFFER_KEY);
-        return BUFFER_PROFILES[value] ? value : 'normal';
+    // 缓冲秒数：留空或非法时由播放器使用默认 30 秒
+    function getBufferSeconds() {
+        const value = parseInt(localStorage.getItem(BUFFER_SECONDS_KEY), 10);
+        return Number.isFinite(value) && value >= BUFFER_SECONDS_MIN && value <= BUFFER_SECONDS_MAX ? value : null;
     }
 
     function paintPlaybackSettings() {
@@ -1085,15 +1061,15 @@
             button.classList.toggle('active', Math.abs(parseFloat(button.dataset.rate) - rate) < 0.01);
         });
 
-        const level = getBufferLevel();
-        document.querySelectorAll('#bufferLevelSegment button').forEach(function (button) {
-            button.classList.toggle('active', button.dataset.level === level);
-        });
+        const seconds = getBufferSeconds();
+        const secondsInput = document.getElementById('bufferSecondsInput');
+        if (secondsInput) secondsInput.value = seconds === null ? '' : String(seconds);
 
         const desc = document.getElementById('bufferLevelDesc');
         if (desc) {
-            const profile = BUFFER_PROFILES[level];
-            desc.textContent = profile.desc;
+            desc.textContent = seconds !== null
+                ? `当前预加载 ${seconds} 秒；可填 1–300 秒，留空恢复默认 30 秒，下次打开播放器生效`
+                : '默认预加载 30 秒；可填 1–300 秒，下次打开播放器生效';
         }
     }
 
@@ -1117,12 +1093,19 @@
             });
         }
 
-        const bufferSegment = document.getElementById('bufferLevelSegment');
-        if (bufferSegment) {
-            bufferSegment.addEventListener('click', function (event) {
-                const button = event.target.closest('button[data-level]');
-                if (!button) return;
-                localStorage.setItem(BUFFER_KEY, button.dataset.level);
+        const bufferSecondsInput = document.getElementById('bufferSecondsInput');
+        if (bufferSecondsInput) {
+            bufferSecondsInput.addEventListener('change', function () {
+                const raw = String(bufferSecondsInput.value || '').trim();
+                if (raw === '') {
+                    localStorage.removeItem(BUFFER_SECONDS_KEY);
+                } else {
+                    let value = parseInt(raw, 10);
+                    if (!Number.isFinite(value)) return;
+                    value = Math.min(BUFFER_SECONDS_MAX, Math.max(BUFFER_SECONDS_MIN, value));
+                    bufferSecondsInput.value = String(value);
+                    localStorage.setItem(BUFFER_SECONDS_KEY, String(value));
+                }
                 paintPlaybackSettings();
             });
         }
@@ -1401,9 +1384,6 @@
     window.startImportUrl = startImportUrl;
     window.startImportText = startImportText;
     window.initSettingsPanel = initSettingsPanel;
-
-    // 供 player.js 复用的缓冲档位表
-    window.PLAYBACK_BUFFER_PROFILES = BUFFER_PROFILES;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initSettingsPanel);
