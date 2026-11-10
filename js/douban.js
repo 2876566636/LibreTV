@@ -169,7 +169,7 @@ function fillAndSearch(title) {
     }
 }
 
-// 填充搜索框，确保豆瓣资源API被选中，然后执行搜索
+// 填充搜索框并执行搜索；不改动用户当前已选中的视频源
 async function fillAndSearchWithDouban(title) {
     if (!title) return;
     
@@ -178,23 +178,6 @@ async function fillAndSearchWithDouban(title) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
-    
-    // 确保豆瓣资源API被选中
-    if (typeof selectedAPIs !== 'undefined') {
-        const dbzySite = (typeof API_SITES !== 'undefined' && Array.isArray(API_SITES))
-            ? API_SITES.find(function (site) { return site.name === '豆瓣资源'; })
-            : null;
-        const dbzyId = dbzySite ? (dbzySite.id || dbzySite.url) : null;
-
-        if (dbzyId && !selectedAPIs.includes(dbzyId)) {
-            selectedAPIs.push(dbzyId);
-            localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
-            if (typeof renderSourceList === 'function') {
-                renderSourceList();
-            }
-            showToast('已自动选择豆瓣资源API', 'info');
-        }
-    }
     
     // 填充搜索框并执行搜索
     const input = document.getElementById('searchInput');
