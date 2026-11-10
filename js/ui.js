@@ -225,61 +225,114 @@ function saveSearchHistory(query) {
     renderSearchHistory();
 }
 
-// 渲染最近搜索历史的增强版本
+// ---------- 最近搜索浮层 ----------
+// 浮层只在搜索框聚焦/点击时出现，点击外部、Esc、回车搜索或点搜索按钮时收起。
+function setupSearchHistoryPopover() {
+    const input = document.getElementById('searchInput');
+    const panel = document.getElementById('recentSearches');
+    if (!input || !panel || panel.dataset.bound === '1') return;
+    panel.dataset.bound = '1';
+
+    const show = function () { showSearchHistory(); };
+    input.addEventListener('focus', show);
+    input.addEventListener('click', show);
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === 'Escape') hideSearchHistory();
+    });
+
+    const searchBtn = document.querySelector('.search-bar-btn-search');
+    if (searchBtn) searchBtn.addEventListener('click', hideSearchHistory);
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest && (e.target.closest('#recentSearches') || e.target.closest('.search-bar'))) return;
+        hideSearchHistory();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideSearchHistory();
+    });
+}
+
+function showSearchHistory() {
+    const panel = document.getElementById('recentSearches');
+    if (panel && panel.children.length > 0) panel.classList.remove('hidden');
+}
+
+function hideSearchHistory() {
+    const panel = document.getElementById('recentSearches');
+    if (panel) panel.classList.add('hidden');
+}
+
+// 渲染最近搜索历史（浮窗样式：标题 + 逐行记录）
 function renderSearchHistory() {
     const historyContainer = document.getElementById('recentSearches');
     if (!historyContainer) return;
 
+    setupSearchHistoryPopover();
     const history = getSearchHistory();
 
     if (history.length === 0) {
         historyContainer.innerHTML = '';
+        historyContainer.classList.add('hidden');
         return;
     }
 
-    // 创建一个包含标题和清除按钮的行
     historyContainer.innerHTML = `
-        <div class="flex justify-between items-center w-full mb-2">
-            <div class="text-gray-500">最近搜索:</div>
-            <button id="clearHistoryBtn" class="text-gray-500 hover:text-white transition-colors"
-                    onclick="clearSearchHistory()" aria-label="清除搜索历史">
-                清除搜索历史
-            </button>
+        <div class="search-history-header">
+            <span>最近搜索</span>
+            <button type="button" id="clearHistoryBtn" onclick="clearSearchHistory()" aria-label="清除搜索历史">清除</button>
         </div>
+        <div class="search-history-list"></div>
     `;
+    const list = historyContainer.querySelector('.search-history-list');
 
-    history.forEach(item => {
-        const tag = document.createElement('button');
-        tag.className = 'search-tag flex items-center gap-1';
-        const textSpan = document.createElement('span');
-        textSpan.textContent = item.text;
-        tag.appendChild(textSpan);
+    history.forEach(function (item) {
+        const row = document.createElement('div');
+        row.className = 'search-history-row';
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
 
-        // 添加删除按钮
-        const deleteButton = document.createElement('span');
-        deleteButton.className = 'pl-1 text-gray-500 hover:text-red-500 transition-colors';
-        deleteButton.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-        deleteButton.onclick = function(e) {
-            // 阻止事件冒泡，避免触发搜索
+        const icon = document.createElement('span');
+        icon.className = 'search-history-clock';
+        icon.innerHTML = '<svg class="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="1.8"></circle><path d="M12 7v5l3 2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+
+        const label = document.createElement('span');
+        label.className = 'search-history-text';
+        label.textContent = item.text;
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'search-history-delete';
+        deleteButton.setAttribute('aria-label', '删除这条搜索记录');
+        deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+        deleteButton.onclick = function (e) {
             e.stopPropagation();
-            // 删除对应历史记录
             deleteSingleSearchHistory(item.text);
-            // 重新渲染搜索历史
             renderSearchHistory();
         };
-        tag.appendChild(deleteButton);
 
-        // 添加时间提示（如果有时间戳）
+        row.appendChild(icon);
+        row.appendChild(label);
+        row.appendChild(deleteButton);
+
         if (item.timestamp) {
-            const date = new Date(item.timestamp);
-            tag.title = `搜索于: ${date.toLocaleString()}`;
+            row.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
         }
 
-        tag.onclick = function() {
-            document.getElementById('searchInput').value = item.text;
+        const activate = function () {
+            const input = document.getElementById('searchInput');
+            if (input) input.value = item.text;
+            hideSearchHistory();
             search();
         };
-        historyContainer.appendChild(tag);
+        row.onclick = activate;
+        row.onkeydown = function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                activate();
+            }
+        };
+
+        list.appendChild(row);
     });
 }
 
