@@ -1340,36 +1340,7 @@
             });
         }
 
-        // 部分移动浏览器不支持 overscroll-behavior，用 touchmove 兜底阻止面板下拉刷新
-        let touchStartY = 0;
-        document.addEventListener('touchstart', function (event) {
-            if (event.touches.length === 1) touchStartY = event.touches[0].clientY;
-        }, { passive: true });
-
-        document.addEventListener('touchmove', function (event) {
-            const settingsOpen = document.body.classList.contains('settings-open');
-            const historyPanelEl = document.getElementById('historyPanel');
-            const historyOpen = !!(historyPanelEl && historyPanelEl.classList.contains('show'));
-            if (!settingsOpen && !historyOpen) return;
-            if (event.touches.length !== 1) return;
-
-            const deltaY = event.touches[0].clientY - touchStartY;
-            if (deltaY === 0) return;
-
-            const target = event.target;
-            const scroller = target && target.closest ? target.closest('.settings-body, .history-panel') : null;
-            if (!scroller) {
-                event.preventDefault();
-                return;
-            }
-
-            // 到顶继续下拉、到底继续上滑时阻止滚动链，避免带动首页
-            const atTop = scroller.scrollTop <= 0;
-            const atBottom = Math.ceil(scroller.scrollTop + scroller.clientHeight) >= scroller.scrollHeight - 1;
-            if ((deltaY > 0 && atTop) || (deltaY < 0 && atBottom)) {
-                event.preventDefault();
-            }
-        }, { passive: false });
+        // 面板/抽屉内的滚动边界拦截由 js/overlay-guard.js 统一处理，这里只负责 body 锁
 
         ensureDefaults();
         bindSourceListEvents();

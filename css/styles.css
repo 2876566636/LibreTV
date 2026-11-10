@@ -42,6 +42,20 @@ body {
     overscroll-behavior-y: none;
 }
 
+/* 浮层滚动到边界后不再把滚动链传给底层页面（iOS 旧版由 js/overlay-guard.js 兜底） */
+#modal,
+#modalContent,
+#passwordModal,
+#disclaimerModal,
+#loading,
+#settingsPanel,
+.settings-body,
+.settings-dialog,
+.settings-dialog-body,
+.history-panel {
+    overscroll-behavior: contain;
+}
+
 :root {
     /* 赛博影视主题配色方案 - 柔和版 */    --primary-color: #00ccff;       /* 霓虹蓝主色调 */
     --primary-light: #33d6ff;       /* 浅霓虹蓝变体 */
