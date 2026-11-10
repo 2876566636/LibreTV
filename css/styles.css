@@ -1465,28 +1465,7 @@ body.history-open {
     transform: translateX(14px);
 }
 
-/* ---------- 添加 / 编辑表单 ---------- */
-
-.settings-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0 0 12px;
-    padding: 12px;
-    background: #151515;
-    border: 1px solid #333;
-    border-radius: 10px;
-}
-
-.settings-editor.hidden {
-    display: none !important;
-}
-
-.settings-editor-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e5e7eb;
-}
+/* ---------- 表单控件 ---------- */
 
 .settings-input {
     width: 100%;
@@ -1521,10 +1500,295 @@ body.history-open {
     accent-color: #a855f7;
 }
 
-.settings-editor-actions {
+.settings-editor-note {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #6b7280;
+}
+
+.settings-textarea {
+    width: 100%;
+    min-height: 92px;
+    padding: 8px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #e5e7eb;
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 8px;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.18s ease;
+}
+
+.settings-textarea::placeholder {
+    color: #52525b;
+}
+
+.settings-textarea:focus {
+    border-color: #6b7280;
+}
+
+/* 添加源浮窗菜单 */
+
+.settings-menu-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.settings-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 8;
     display: flex;
+    flex-direction: column;
+    min-width: 186px;
+    padding: 6px;
+    background: #262626;
+    border: 1px solid #3a3a3a;
+    border-radius: 12px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
+}
+
+.settings-menu.hidden {
+    display: none !important;
+}
+
+.settings-menu button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.2;
+    text-align: left;
+    color: #e5e7eb;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-menu button:hover {
+    color: #fff;
+    background: #333335;
+}
+
+.settings-menu-arrow {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: #8b8b93;
+    transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.settings-menu button[aria-expanded="true"] .settings-menu-arrow {
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+.settings-menu-group {
+    position: relative;
+}
+
+/* 二级菜单：浮窗，桌面在右侧弹出 */
+.settings-submenu {
+    position: absolute;
+    top: -6px;
+    left: calc(100% + 12px);
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 152px;
+    padding: 6px;
+    background: #2f2f31;
+    border: 1px solid #464649;
+    border-radius: 12px;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.68);
+}
+
+.settings-submenu.hidden {
+    display: none !important;
+}
+
+.settings-submenu button {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #a1a1aa;
+}
+
+.settings-submenu button:hover {
+    color: #fff;
+}
+
+/* 空间不足（面板太窄）时的兜底：二级菜单在菜单内切换成独立页面 */
+.settings-menu.is-drilling > button[role="menuitem"] {
+    display: none;
+}
+
+.settings-menu.is-drilling > .settings-menu-group:not(.is-active) {
+    display: none;
+}
+
+.settings-menu.is-drilling .settings-menu-group.is-active > .settings-menu-item {
+    color: #f4f4f5;
+    font-weight: 600;
+}
+
+.settings-menu.is-drilling .settings-menu-group.is-active > .settings-menu-item .settings-menu-arrow {
+    color: #d4d4d8;
+    transform: rotate(180deg);
+}
+
+.settings-menu.is-drilling .settings-submenu {
+    position: static;
+    min-width: 0;
+    margin-top: 4px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ---------- 视频源弹窗 ---------- */
+
+.settings-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.settings-dialog.hidden {
+    display: none !important;
+}
+
+.settings-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.settings-dialog-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 100%);
+    max-height: min(560px, calc(100dvh - 32px));
+    background: #1b1b1b;
+    border: 1px solid #333;
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.settings-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #262626;
+}
+
+.settings-dialog-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f4f4f5;
+}
+
+.settings-dialog-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    color: #8b8b93;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-dialog-close svg {
+    width: 16px;
+    height: 16px;
+}
+
+.settings-dialog-close:hover {
+    color: #fff;
+    background: #2a2a2a;
+}
+
+.settings-dialog-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.settings-dialog-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.settings-dialog-section.hidden {
+    display: none !important;
+}
+
+.settings-dialog-section > .settings-chip {
+    align-self: flex-start;
+}
+
+.settings-dialog-section .settings-textarea {
+    min-height: 150px;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.settings-field-label {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.settings-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
     gap: 8px;
-    margin-top: 2px;
+    padding: 12px 16px;
+    background: #191919;
+    border-top: 1px solid #262626;
+}
+
+body.settings-dialog-open {
+    overflow: hidden;
 }
 
 /* ---------- 设置分组 ---------- */
@@ -1695,10 +1959,19 @@ body.history-open {
 
 @media (max-width: 640px) {
     .settings-panel {
-        width: 320px;
+        /* 比旧版 320px 略宽，给一级 + 二级浮窗留出并排空间 */
+        width: 360px;
         max-width: 100%;
         height: 100dvh;
         max-height: 100dvh;
+    }
+
+    .settings-menu {
+        min-width: 148px;
+    }
+
+    .settings-submenu {
+        min-width: 124px;
     }
 
     /* iOS 输入框字号小于 16px 时聚焦会自动放大页面，出现白边/白块 */
@@ -1708,6 +1981,23 @@ body.history-open {
 
     .settings-number-input {
         font-size: 16px;
+    }
+
+    .settings-input,
+    .settings-textarea {
+        font-size: 16px;
+    }
+
+    /* 弹窗在窄屏改为底部卡片 */
+    .settings-dialog {
+        align-items: flex-end;
+        padding: 12px;
+    }
+
+    .settings-dialog-panel {
+        width: 100%;
+        max-height: calc(100dvh - 24px);
+        border-radius: 16px;
     }
 
     /* 移动端去掉 backdrop-filter，避免聚焦重绘时出现白色矩形 */

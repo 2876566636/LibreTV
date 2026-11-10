@@ -14,7 +14,7 @@
     <link rel="manifest" href="manifest.json">
     
     <script src="libs/tailwindcss.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261110-10">
+    <link rel="stylesheet" href="css/styles.css?v=20261110-22">
     <link rel="stylesheet" href="css/index.css">
 </head>
 <body class="page-bg text-white">
@@ -90,10 +90,40 @@
                         <span id="siteStatus" class="settings-muted"></span>
                     </div>
                     <div class="settings-toolbar-actions">
+                        <div class="settings-menu-wrap">
+                            <button id="addSourceMenuBtn" type="button" class="settings-chip primary" onclick="toggleAddSourceMenu(event)" aria-haspopup="true" aria-expanded="false">+ 添加</button>
+                            <div id="addSourceMenu" class="settings-menu add-source-menu hidden" role="menu">
+                                <button type="button" role="menuitem" onclick="startManualAdd()">手动添加</button>
+                                <div class="settings-menu-group">
+                                    <button id="sourceSubmenuImportBtn" type="button" class="settings-menu-item has-sub" role="menuitem" aria-expanded="false" onclick="toggleSourceSubmenu('import', event)">
+                                        <span>导入视频源</span>
+                                        <svg class="settings-menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    </button>
+                                    <div id="sourceSubmenuImport" class="settings-submenu hidden" role="menu">
+                                        <button type="button" role="menuitem" onclick="startImportFile()">从文件导入</button>
+                                        <button type="button" role="menuitem" onclick="startImportUrl()">从 URL 导入</button>
+                                        <button type="button" role="menuitem" onclick="startImportText()">从文本导入</button>
+                                    </div>
+                                </div>
+                                <div class="settings-menu-group">
+                                    <button id="sourceSubmenuExportBtn" type="button" class="settings-menu-item has-sub" role="menuitem" aria-expanded="false" onclick="toggleSourceSubmenu('export', event)">
+                                        <span>导出视频源</span>
+                                        <svg class="settings-menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                        </svg>
+                                    </button>
+                                    <div id="sourceSubmenuExport" class="settings-submenu hidden" role="menu">
+                                        <button type="button" role="menuitem" onclick="exportSourcesToFile()">导出为文件</button>
+                                        <button type="button" role="menuitem" onclick="exportSourcesToClipboard()">导出为文本</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <button id="testSourcesBtn" type="button" class="settings-chip" onclick="testAllSources()">测速</button>
                         <button id="sortByLatencyBtn" type="button" class="settings-chip hidden" onclick="sortSourcesByLatency()">按延迟</button>
                         <button id="toggleAllSourcesBtn" type="button" class="settings-chip" onclick="toggleAllSources()">全部启用</button>
-                        <button type="button" class="settings-chip primary" onclick="openSourceForm()">+ 添加</button>
                     </div>
                 </div>
 
@@ -104,25 +134,11 @@
                     <input id="sourceFilterInput" type="text" placeholder="筛选名称或接口地址" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="renderSourceList()">
                 </div>
 
-                <!-- 添加 / 编辑视频源表单 -->
-                <div id="sourceEditor" class="settings-editor hidden">
-                    <div class="settings-editor-title" id="sourceEditorTitle">添加视频源</div>
-                    <input id="sourceEditorName" class="settings-input" type="text" placeholder="名称，例如：我的资源站" autocomplete="off">
-                    <input id="sourceEditorUrl" class="settings-input" type="text" placeholder="接口地址，例如：https://example.com/api.php/provide/vod" autocomplete="off">
-                    <input id="sourceEditorDetail" class="settings-input" type="text" placeholder="详情接口地址（可选）" autocomplete="off">
-                    <label class="settings-checkbox">
-                        <input type="checkbox" id="sourceEditorAdult">
-                        <span>成人内容（18+）</span>
-                    </label>
-                    <div class="settings-editor-actions">
-                        <button type="button" class="settings-chip primary" onclick="saveSourceForm()">保存</button>
-                        <button type="button" class="settings-chip" onclick="closeSourceForm()">取消</button>
-                    </div>
-                </div>
+                <input type="file" id="sourceImportFile" class="hidden" accept=".json,application/json,text/plain" onchange="handleImportFile(event)">
 
                 <div id="sourceList" class="settings-source-list" aria-live="polite"></div>
 
-                <p class="settings-hint">点击开关启用或停用源；↑ ↓ 调整搜索顺序；内置源可停用但不可删除。测速结果仅在当前页面有效。</p>
+                <p class="settings-hint">点击开关启用或停用源；↑ ↓ 调整搜索顺序；自定义源可编辑删除。测速结果仅在当前页面有效。</p>
             </section>
 
             <!-- 播放设置 -->
@@ -228,6 +244,61 @@
                 </div>
             </section>
 
+        </div>
+    </div>
+
+    <!-- 视频源弹窗：手动添加 / 编辑 / 从 URL 导入 -->
+    <div id="sourceDialog" class="settings-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="sourceEditorTitle">
+        <div class="settings-dialog-backdrop" onclick="closeSourceForm()"></div>
+        <div class="settings-dialog-panel">
+            <div class="settings-dialog-header">
+                <h3 class="settings-dialog-title" id="sourceEditorTitle">手动添加视频源</h3>
+                <button type="button" class="settings-dialog-close" aria-label="关闭" onclick="closeSourceForm()">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="settings-dialog-body">
+                <div id="sourceDialogManual" class="settings-dialog-section">
+                    <label class="settings-field">
+                        <span class="settings-field-label">名称</span>
+                        <input id="sourceEditorName" class="settings-input" type="text" placeholder="例如：我的资源站" autocomplete="off">
+                    </label>
+                    <label class="settings-field">
+                        <span class="settings-field-label">接口地址</span>
+                        <input id="sourceEditorUrl" class="settings-input" type="text" placeholder="https://example.com/api.php/provide/vod" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    </label>
+                    <label class="settings-field">
+                        <span class="settings-field-label">详情地址（可选）</span>
+                        <input id="sourceEditorDetail" class="settings-input" type="text" placeholder="https://example.com" autocomplete="off">
+                    </label>
+                    <label class="settings-checkbox">
+                        <input type="checkbox" id="sourceEditorAdult">
+                        <span>成人内容（18+）</span>
+                    </label>
+                </div>
+
+                <div id="sourceDialogUrl" class="settings-dialog-section hidden">
+                    <label class="settings-field">
+                        <span class="settings-field-label">JSON 地址</span>
+                        <input id="dialogSourceUrl" class="settings-input" type="text" placeholder="https://example.com/sources.json" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    </label>
+                    <p class="settings-editor-note">从远程地址拉取视频源列表，内容为 name、url、adult（可选）的 JSON 数组；重复地址会自动跳过。</p>
+                </div>
+
+                <div id="sourceDialogText" class="settings-dialog-section hidden">
+                    <p class="settings-editor-note">粘贴 JSON 数组，字段为 name、url、adult（可选），与内置源 api-sites.js 格式一致；重复的地址会自动跳过。</p>
+                    <textarea id="dialogSourceText" class="settings-textarea" rows="8" placeholder='[{"name":"红牛资源","url":"https://www.hongniuzy2.com/api.php/provide/vod","adult":false}]' autocomplete="off" spellcheck="false"></textarea>
+                    <button type="button" class="settings-chip" onclick="triggerImportFile()">选择文件…</button>
+                </div>
+            </div>
+
+            <div class="settings-dialog-footer">
+                <button type="button" class="settings-chip" onclick="closeSourceForm()">取消</button>
+                <button type="button" class="settings-chip primary" id="sourceDialogConfirm" onclick="confirmSourceDialog()">保存</button>
+            </div>
         </div>
     </div>
 
@@ -464,16 +535,17 @@
         // 保存原始 js‑sha256 实现，避免被 password.js 覆盖
         window._jsSha256 = window.sha256;
     </script>
-    <script src="js/config.js?v=20261110-7"></script>
+    <script src="js/api-sites.js?v=20261110-8"></script>
+    <script src="js/config.js?v=20261110-9"></script>
     <script src="js/proxy-auth.js"></script>
     <script src="js/customer_site.js"></script>
     <script src="js/ui.js?v=20261110-10"></script>
-    <script src="js/api.js?v=20261110-6"></script>
-    <script src="js/douban.js?v=20261110-4"></script>
+    <script src="js/api.js?v=20261110-8"></script>
+    <script src="js/douban.js?v=20261110-5"></script>
     <script src="js/password.js"></script>
-    <script src="js/search.js?v=20261110-5"></script>
-    <script src="js/app.js?v=20261110-7"></script>
-    <script src="js/settings.js?v=20261110-6"></script>
+    <script src="js/search.js?v=20261110-6"></script>
+    <script src="js/app.js?v=20261110-9"></script>
+    <script src="js/settings.js?v=20261110-15"></script>
 
     <!-- PWA 注册 -->
     <script src="js/pwa-register.js"></script>

@@ -1,5 +1,5 @@
 // 全局变量
-let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '["maoyan","hongniu","tyyszy","dyttzy", "bfzy", "ruyi"]'); // 默认选中资源
+let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]'); // 启用的视频源 id（内置源为接口地址，自定义源为 custom_N）
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
 // 添加当前播放的集数索引
@@ -47,6 +47,9 @@ function setupEventListeners() {
 
     // 点击外部关闭设置面板和历史记录面板
     document.addEventListener('click', function (e) {
+        // 视频源弹窗是独立浮层，点击它不应关闭背后的设置面板
+        if (e.target.closest && e.target.closest('#sourceDialog')) return;
+
         // 关闭设置面板
         const settingsPanel = document.querySelector('#settingsPanel.show');
         const settingsButton = document.querySelector('#settingsPanel .close-btn');

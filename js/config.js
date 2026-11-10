@@ -31,144 +31,60 @@ const SITE_CONFIG = {
     version: '1.0.3'
 };
 
-// API站点配置
-const API_SITES = {
-    maoyan: {
-        api: 'https://api.maoyanapi.top/api.php/provide/vod',
-        name: '猫眼资源',
-    },
-    hongniu: {
-        api: 'http://hongniuzy2.com/api.php/provide/vod/from/hnm3u8',
-        name: '红牛资源',
-    },
-    dyttzy: {
-        api: 'http://caiji.dyttzyapi.com/api.php/provide/vod',
-        name: '电影天堂资源',
-        detail: 'http://caiji.dyttzyapi.com',
-    },
-    ruyi: {
-        api: 'https://cj.rycjapi.com/api.php/provide/vod',
-        name: '如意资源',
-    },
-    bfzy: {
-        api: 'https://bfzyapi.com/api.php/provide/vod',
-        name: '暴风资源',
-    },
-    tyyszy: {
-        api: 'https://tyyszy.com/api.php/provide/vod',
-        name: '天涯资源',
-    },
-    ffzy: {
-        api: 'http://ffzy5.tv/api.php/provide/vod',
-        name: '非凡影视',
-        detail: 'http://ffzy5.tv',
-    },
-    zy360: {
-        api: 'https://360zy.com/api.php/provide/vod',
-        name: '360资源',
-    },
-    wolong: {
-        api: 'https://wolongzyw.com/api.php/provide/vod',
-        name: '卧龙资源',
-    },
-    jisu: {
-        api: 'https://jszyapi.com/api.php/provide/vod',
-        name: '极速资源',
-        detail: 'https://jszyapi.com',
-    },
-    dbzy: {
-        api: 'https://dbzy.tv/api.php/provide/vod',
-        name: '豆瓣资源',
-    },
-    mdzy: {
-        api: 'https://www.mdzyapi.com/api.php/provide/vod',
-        name: '魔都资源',
-    },
-    zuid: {
-        api: 'https://api.zuidapi.com/api.php/provide/vod',
-        name: '最大资源'
-    },
-    yinghua: {
-        api: 'https://m3u8.apiyhzy.com/api.php/provide/vod',
-        name: '樱花资源'
-    },
-    baidu: {
-        api: 'https://api.apibdzy.com/api.php/provide/vod',
-        name: '百度云资源'
-    },
-    wujin: {
-        api: 'https://api.wujinapi.me/api.php/provide/vod',
-        name: '无尽资源'
-    },
-    wwzy: {
-        api: 'https://wwzy.tv/api.php/provide/vod',
-        name: '旺旺短剧'
-    },
-    ikun: {
-        api: 'https://ikunzyapi.com/api.php/provide/vod',
-        name: 'iKun资源'
-    },
-    lzi: {
-        api: 'https://cj.lziapi.com/api.php/provide/vod/',
-        name: '量子资源站'
-    },
-    testSource: {
-        api: 'https://www.example.com/api.php/provide/vod',
-        name: '空内容测试源',
-        adult: true
-    },
-    ckzy: {
-        api: 'https://www.ckzy1.com',
-        name: 'CK资源',
-        adult: true
-    },
-    jkun: {
-        api: 'https://jkunzyapi.com',
-        name: 'jkun资源',
-        adult: true
-    },
-    bwzy: {
-        api: 'https://api.bwzym3u8.com',
-        name: '百万资源',
-        adult: true
-    },
-    souav: {
-        api: 'https://api.souavzy.vip',
-        name: 'souav资源',
-        adult: true
-    },
-    r155: {
-        api: 'https://155api.com',
-        name: '155资源',
-        adult: true
-    },
-    lsb: {
-        api: 'https://apilsbzy1.com',
-        name: 'lsb资源',
-        adult: true
-    },
-    huangcang: {
-        api: 'https://hsckzy.vip',
-        name: '黄色仓库',
-        adult: true,
-        detail: 'https://hsckzy.vip'
-    },
-    yutu: {
-        api: 'https://yutuzy10.com',
-        name: '玉兔资源',
-        adult: true
-    }
-};
+// API站点配置来自 js/api-sites.js（数组格式：name / url / adult）
+const API_SITES = (window.BUILTIN_API_SITES || []).slice();
 
-// 定义合并方法
+// 按 url 取视频源（selectedAPIs 中保存的就是 url）
+function getAPISite(id) {
+    if (!id) return null;
+    return API_SITES.find(function (site) { return site.url === id; }) || null;
+}
+
+function getAPISiteId(site) {
+    return site ? site.url : '';
+}
+
+// 旧版本按 key（maoyan / bfzy ...）保存的记录无法再匹配，清理掉，由初始化选择默认前 5 条
+(function clearLegacySiteSelection() {
+    ['selectedAPIs', 'apiSourceOrder'].forEach(function (storageKey) {
+        let raw = null;
+        try {
+            raw = JSON.parse(localStorage.getItem(storageKey));
+        } catch (e) {
+            return;
+        }
+        if (!Array.isArray(raw) || raw.length === 0) return;
+
+        const valid = raw.filter(function (item) {
+            if (typeof item !== 'string') return false;
+            if (item.indexOf('custom_') === 0) return true;
+            return API_SITES.some(function (site) { return site.url === item; });
+        });
+
+        if (valid.length !== raw.length) {
+            localStorage.setItem(storageKey, JSON.stringify(valid));
+        }
+    });
+})();
+
+// 定义合并方法（追加或覆盖视频源）
 function extendAPISites(newSites) {
-    Object.assign(API_SITES, newSites);
+    (Array.isArray(newSites) ? newSites : []).forEach(function (site) {
+        if (!site || !site.url) return;
+        const index = API_SITES.findIndex(function (item) { return item.url === site.url; });
+        if (index !== -1) {
+            API_SITES[index] = Object.assign({}, API_SITES[index], site);
+        } else {
+            API_SITES.push(site);
+        }
+    });
 }
 
 // 暴露到全局
 window.API_SITES = API_SITES;
+window.getAPISite = getAPISite;
+window.getAPISiteId = getAPISiteId;
 window.extendAPISites = extendAPISites;
-
 
 // 添加聚合搜索的配置选项
 const AGGREGATED_SEARCH_CONFIG = {

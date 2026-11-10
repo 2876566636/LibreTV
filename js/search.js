@@ -13,10 +13,11 @@ async function searchByAPIAndKeyWord(apiId, query) {
             apiName = customApi.name;
         } else {
             // 内置API
-            if (!API_SITES[apiId]) return [];
-            apiBaseUrl = API_SITES[apiId].api;
+            const site = getAPISite(apiId);
+            if (!site) return [];
+            apiBaseUrl = site.url;
             apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(query);
-            apiName = API_SITES[apiId].name;
+            apiName = site.name;
         }
         
         // 添加超时处理

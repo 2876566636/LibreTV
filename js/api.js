@@ -16,13 +16,15 @@ async function handleApiRequest(url) {
                 throw new Error('使用自定义API时必须提供API地址');
             }
             
-            if (!API_SITES[source] && source !== 'custom') {
+            const site = source === 'custom' ? null : getAPISite(source);
+
+            if (!site && source !== 'custom') {
                 throw new Error('无效的API来源');
             }
             
             const apiUrl = customApi
                 ? `${customApi}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`
-                : `${API_SITES[source].api}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+                : `${site.url}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
             
             // 添加超时处理
             const controller = new AbortController();
@@ -54,7 +56,7 @@ async function handleApiRequest(url) {
                 
                 // 添加源信息到每个结果
                 data.list.forEach(item => {
-                    item.source_name = source === 'custom' ? '自定义源' : API_SITES[source].name;
+                    item.source_name = source === 'custom' ? '自定义源' : site.name;
                     item.source_code = source;
                     // 对于自定义源，添加API URL信息
                     if (source === 'custom') {
@@ -90,15 +92,14 @@ async function handleApiRequest(url) {
             if (sourceCode === 'custom' && !customApi) {
                 throw new Error('使用自定义API时必须提供API地址');
             }
+
+            const detailSite = sourceCode === 'custom' ? null : getAPISite(sourceCode);
             
-            if (!API_SITES[sourceCode] && sourceCode !== 'custom') {
+            if (!detailSite && sourceCode !== 'custom') {
                 throw new Error('无效的API来源');
             }
 
-            // 对于有detail参数的源，都使用特殊处理方式
-            if (sourceCode !== 'custom' && API_SITES[sourceCode].detail) {
-                return await handleSpecialSourceDetail(id, sourceCode);
-            }
+            // 统一走 JSON 详情接口（采集站均支持 ac=videolist&ids=）
             
             // 如果是自定义API，并且传递了detail参数，尝试特殊处理
             // 优先 customDetail
@@ -111,7 +112,7 @@ async function handleApiRequest(url) {
             
             const detailUrl = customApi
                 ? `${customApi}${API_CONFIG.detail.path}${id}`
-                : `${API_SITES[sourceCode].api}${API_CONFIG.detail.path}${id}`;
+                : `${detailSite.url}${API_CONFIG.detail.path}${id}`;
             
             // 添加超时处理
             const controller = new AbortController();
@@ -187,7 +188,7 @@ async function handleApiRequest(url) {
                         actor: videoDetail.vod_actor,
                         remarks: videoDetail.vod_remarks,
                         // 添加源信息
-                        source_name: sourceCode === 'custom' ? '自定义源' : API_SITES[sourceCode].name,
+                        source_name: sourceCode === 'custom' ? '自定义源' : detailSite.name,
                         source_code: sourceCode
                     }
                 });
@@ -299,9 +300,12 @@ function parsePlayUrl(playUrl) {
 // 通用特殊源详情处理函数
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
+        const site = getAPISite(sourceCode);
+        if (!site) throw new Error('无效的API来源');
+
         // 优先使用采集站的 JSON 详情接口，HTML 详情页经常被反爬页（Verify Yourself）拦截
         try {
-            const base = API_SITES[sourceCode].api;
+            const base = site.url;
             const separator = base.indexOf('?') !== -1 ? '&' : '?';
             const apiDetailUrl = `${base}${separator}ac=detail&ids=${encodeURIComponent(id)}`;
 
@@ -338,18 +342,18 @@ async function handleSpecialSourceDetail(id, sourceCode) {
                             director: videoDetail.vod_director,
                             actor: videoDetail.vod_actor,
                             remarks: videoDetail.vod_remarks,
-                            source_name: API_SITES[sourceCode].name,
+                            source_name: site.name,
                             source_code: sourceCode
                         }
                     });
                 }
             }
         } catch (apiError) {
-            console.warn(`${API_SITES[sourceCode].name} JSON 详情失败，回退 HTML 详情:`, apiError);
+            console.warn(`${site.name} JSON 详情失败，回退 HTML 详情:`, apiError);
         }
 
         // 构建详情页URL（使用配置中的detail URL而不是api URL）
-        const detailUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
+        const detailUrl = `${site.detail}/index.php/vod/detail/id/${id}.html`;
         
         // 添加超时处理
         const controller = new AbortController();
@@ -380,7 +384,7 @@ async function handleSpecialSourceDetail(id, sourceCode) {
         // 根据不同源类型使用不同的正则表达式
         let matches = [];
         
-        if (sourceCode === 'ffzy') {
+        if (site.name === '非凡影视') {
             // 非凡影视使用特定的正则表达式
             const ffzyPattern = /\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g;
             matches = html.match(ffzyPattern) || [];
@@ -414,31 +418,30 @@ async function handleSpecialSourceDetail(id, sourceCode) {
             videoInfo: {
                 title: titleText,
                 desc: descText,
-                source_name: API_SITES[sourceCode].name,
+                source_name: site.name,
                 source_code: sourceCode
             }
         });
     } catch (error) {
-        console.error(`${API_SITES[sourceCode].name}详情获取失败:`, error);
+        console.error(`${getAPISite(sourceCode)?.name || sourceCode}详情获取失败:`, error);
         throw error;
     }
 }
 
 // 处理聚合搜索
 async function handleAggregatedSearch(searchQuery) {
-    // 获取可用的API源列表（排除aggregated和custom）
-    const availableSources = Object.keys(API_SITES).filter(key => 
-        key !== 'aggregated' && key !== 'custom'
-    );
+    // 获取可用的API源列表
+    const availableSources = API_SITES.filter(site => site && site.url);
     
     if (availableSources.length === 0) {
         throw new Error('没有可用的API源');
     }
     
     // 创建所有API源的搜索请求
-    const searchPromises = availableSources.map(async (source) => {
+    const searchPromises = availableSources.map(async (site) => {
+        const source = site.id;
         try {
-            const apiUrl = `${API_SITES[source].api}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+            const apiUrl = `${site.url}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
             
             // 使用Promise.race添加超时处理
             const timeoutPromise = new Promise((_, reject) => 
@@ -469,7 +472,7 @@ async function handleAggregatedSearch(searchQuery) {
             // 为搜索结果添加源信息
             const results = data.list.map(item => ({
                 ...item,
-                source_name: API_SITES[source].name,
+                source_name: site.name,
                 source_code: source
             }));
             

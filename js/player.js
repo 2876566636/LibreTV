@@ -1481,9 +1481,10 @@ function renderResourceInfoBar() {
     `;
 
     // 查找当前源名称，从 API_SITES 和 custom_api 中查找即可
-    let resourceName = currentSource
-    if (currentSource && API_SITES[currentSource]) {
-        resourceName = API_SITES[currentSource].name;
+    let resourceName = currentSource;
+    const currentSite = getAPISite(currentSource);
+    if (currentSite) {
+        resourceName = currentSite.name;
     }
     if (resourceName === currentSource) {
         const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]');
@@ -1630,8 +1631,9 @@ async function showSwitchResourceModal() {
 
     // 搜索
     const resourceOptions = selectedAPIs.map((curr) => {
-        if (API_SITES[curr]) {
-            return { key: curr, name: API_SITES[curr].name };
+        const site = getAPISite(curr);
+        if (site) {
+            return { key: curr, name: site.name };
         }
         const customIndex = parseInt(curr.replace('custom_', ''), 10);
         if (customAPIs[customIndex]) {

@@ -51,6 +51,7 @@
     const sourceHealth = new Map();
     let testing = false;
     let editingCustomIndex = null;
+    let dialogMode = 'manual';
     let initialized = false;
 
     // ---------------- 工具 ----------------
@@ -86,16 +87,15 @@
     // ---------------- 视频源数据 ----------------
 
     function builtinSources() {
-        const sites = (typeof API_SITES !== 'undefined' && API_SITES) || window.API_SITES || {};
-        return Object.keys(sites).map(function (key) {
-            const api = sites[key] || {};
+        const sites = (typeof API_SITES !== 'undefined' && API_SITES) || window.API_SITES || [];
+        return (Array.isArray(sites) ? sites : []).map(function (site) {
             return {
-                id: key,
+                id: site.url,
                 type: 'builtin',
-                name: api.name || key,
-                url: api.api || '',
-                detail: api.detail || '',
-                adult: !!api.adult
+                name: site.name || site.url,
+                url: site.url || '',
+                detail: site.detail || '',
+                adult: !!site.adult
             };
         }).filter(function (source) {
             return !!source.url;
@@ -382,11 +382,33 @@
 
     // ---------------- 添加 / 编辑 / 删除 ----------------
 
+    function showDialogSection(mode) {
+        [
+            ['sourceDialogManual', 'manual'],
+            ['sourceDialogUrl', 'url'],
+            ['sourceDialogText', 'text']
+        ].forEach(function (pair) {
+            const section = document.getElementById(pair[0]);
+            if (section) section.classList.toggle('hidden', mode !== pair[1]);
+        });
+    }
+
+    function openSourceDialog() {
+        const dialog = document.getElementById('sourceDialog');
+        if (!dialog) return;
+        dialog.classList.remove('hidden');
+        document.body.classList.add('settings-dialog-open');
+    }
+
     function openSourceForm(index) {
-        const editor = document.getElementById('sourceEditor');
-        if (!editor) return;
+        const dialog = document.getElementById('sourceDialog');
+        if (!dialog) return;
+        dialogMode = 'manual';
+        closeAddSourceMenu();
+        showDialogSection('manual');
 
         const title = document.getElementById('sourceEditorTitle');
+        const confirm = document.getElementById('sourceDialogConfirm');
         const nameInput = document.getElementById('sourceEditorName');
         const urlInput = document.getElementById('sourceEditorUrl');
         const detailInput = document.getElementById('sourceEditorDetail');
@@ -403,21 +425,51 @@
             if (adultInput) adultInput.checked = !!api.isAdult;
         } else {
             editingCustomIndex = null;
-            if (title) title.textContent = '添加视频源';
+            if (title) title.textContent = '手动添加视频源';
             nameInput.value = '';
             urlInput.value = '';
             if (detailInput) detailInput.value = '';
             if (adultInput) adultInput.checked = false;
         }
+        if (confirm) confirm.textContent = '保存';
 
-        editor.classList.remove('hidden');
-        editor.scrollIntoView({ block: 'nearest' });
+        openSourceDialog();
         nameInput.focus();
     }
 
+    function openUrlImportDialog() {
+        closeAddSourceMenu();
+        dialogMode = 'url';
+        showDialogSection('url');
+
+        const title = document.getElementById('sourceEditorTitle');
+        const confirm = document.getElementById('sourceDialogConfirm');
+        const urlInput = document.getElementById('dialogSourceUrl');
+        if (title) title.textContent = '从 URL 导入视频源';
+        if (confirm) confirm.textContent = '拉取并导入';
+        if (urlInput) urlInput.value = '';
+
+        openSourceDialog();
+        if (urlInput) urlInput.focus();
+    }
+
+    function confirmSourceDialog() {
+        if (dialogMode === 'url') {
+            const urlInput = document.getElementById('dialogSourceUrl');
+            importSourcesFromUrl(urlInput ? urlInput.value : '');
+            return;
+        }
+        if (dialogMode === 'text') {
+            importSourcesFromText();
+            return;
+        }
+        saveSourceForm();
+    }
+
     function closeSourceForm() {
-        const editor = document.getElementById('sourceEditor');
-        if (editor) editor.classList.add('hidden');
+        const dialog = document.getElementById('sourceDialog');
+        if (dialog) dialog.classList.add('hidden');
+        document.body.classList.remove('settings-dialog-open');
         editingCustomIndex = null;
     }
 
@@ -490,6 +542,408 @@
         renderSourceList();
         enforceAdultRule();
         toast('已删除视频源：' + api.name, 'info');
+    }
+
+    // ---------------- 导入 / 导出 ----------------
+
+    const URL_FIELD_KEYS = ['url', 'api', 'apiUrl', 'api_url', 'baseUrl', 'address'];
+    const NAME_FIELD_KEYS = ['name', 'title', 'label'];
+    const DETAIL_FIELD_KEYS = ['detail', 'detailUrl', 'detail_url'];
+
+    function pickField(raw, keys) {
+        for (let i = 0; i < keys.length; i++) {
+            const value = raw[keys[i]];
+            if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return '';
+    }
+
+    function toBool(value) {
+        return value === true || value === 1 || value === 'true' || value === '1';
+    }
+
+    function normalizeUrl(url) {
+        return String(url == null ? '' : url).trim().replace(/\/+$/, '');
+    }
+
+    function urlKey(url) {
+        return normalizeUrl(url).toLowerCase();
+    }
+
+    // 把各种来源的单条数据统一成 { name, url, detail, adult }
+    function normalizeSource(raw) {
+        let item = raw;
+        if (typeof item === 'string') item = { url: item };
+        if (!item || typeof item !== 'object') return null;
+
+        const url = normalizeUrl(pickField(item, URL_FIELD_KEYS));
+        if (!/^https?:\/\/[^\s]+$/i.test(url)) return null;
+
+        let name = pickField(item, NAME_FIELD_KEYS);
+        if (!name) {
+            try {
+                name = new URL(url).hostname;
+            } catch (error) {
+                name = url;
+            }
+        }
+
+        return {
+            name: name,
+            url: url,
+            detail: normalizeUrl(pickField(item, DETAIL_FIELD_KEYS)),
+            adult: toBool(item.adult) || toBool(item.isAdult)
+        };
+    }
+
+    function extractSourceArray(data) {
+        if (Array.isArray(data)) return data;
+        if (!data || typeof data !== 'object') return null;
+        const keys = ['sources', 'sites', 'api_sites', 'videoAPIs', 'apis', 'data'];
+        for (let i = 0; i < keys.length; i++) {
+            if (Array.isArray(data[keys[i]])) return data[keys[i]];
+        }
+        return null;
+    }
+
+    function parseSourcePayload(text) {
+        const content = String(text == null ? '' : text).trim();
+        if (!content) return { error: '内容为空，请粘贴 JSON 或选择文件' };
+
+        let data;
+        try {
+            data = JSON.parse(content);
+        } catch (error) {
+            return { error: 'JSON 解析失败：' + error.message };
+        }
+
+        const list = extractSourceArray(data);
+        if (!list) return { error: '格式不正确：需要一个视频源数组' };
+
+        const items = [];
+        let invalid = 0;
+        list.forEach(function (raw) {
+            const source = normalizeSource(raw);
+            if (source) items.push(source);
+            else invalid++;
+        });
+
+        if (!items.length) return { error: '没有可导入的视频源，请检查 name / url 字段' };
+        return { items: items, invalid: invalid };
+    }
+
+    function existingUrlKeys() {
+        const keys = new Set();
+        allSources().forEach(function (source) { keys.add(urlKey(source.url)); });
+        return keys;
+    }
+
+    function importSourceItems(items) {
+        const existing = existingUrlKeys();
+        const added = [];
+        let duplicated = 0;
+
+        items.forEach(function (item) {
+            const key = urlKey(item.url);
+            if (!key || existing.has(key)) {
+                duplicated++;
+                return;
+            }
+            existing.add(key);
+            customAPIs.push({
+                name: item.name,
+                url: item.url,
+                detail: item.detail || '',
+                isAdult: !!item.adult
+            });
+            added.push('custom_' + (customAPIs.length - 1));
+        });
+
+        if (!added.length) {
+            toast(duplicated ? '没有新增视频源，' + duplicated + ' 个地址已存在' : '没有可导入的视频源', 'info');
+            return { added: 0, duplicated: duplicated };
+        }
+
+        localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
+
+        added.forEach(function (id) {
+            if (!isEnabled(id)) selectedAPIs.push(id);
+        });
+
+        const order = getOrder();
+        added.forEach(function (id) {
+            if (order.indexOf(id) === -1) order.push(id);
+        });
+        persistOrder(order);
+        persistEnabled();
+        renderSourceList();
+        enforceAdultRule();
+        return { added: added.length, duplicated: duplicated };
+    }
+
+    function reportImport(applied, invalid) {
+        if (!applied.added) return;
+        const skipped = applied.duplicated + (invalid || 0);
+        toast('已导入 ' + applied.added + ' 个视频源' + (skipped ? '，跳过 ' + skipped + ' 个' : ''), 'success');
+    }
+
+    function openTextImportDialog(prefill) {
+        closeAddSourceMenu();
+        dialogMode = 'text';
+        showDialogSection('text');
+
+        const title = document.getElementById('sourceEditorTitle');
+        const confirm = document.getElementById('sourceDialogConfirm');
+        const textarea = document.getElementById('dialogSourceText');
+        if (title) title.textContent = '从文本导入视频源';
+        if (confirm) confirm.textContent = '导入';
+        if (textarea) textarea.value = typeof prefill === 'string' ? prefill : '';
+
+        openSourceDialog();
+        if (textarea) textarea.focus();
+    }
+
+    function importSourcesFromText() {
+        const textarea = document.getElementById('dialogSourceText');
+        const result = parseSourcePayload(textarea ? textarea.value : '');
+        if (result.error) {
+            toast(result.error, 'warning');
+            return;
+        }
+        const applied = importSourceItems(result.items);
+        reportImport(applied, result.invalid);
+        if (applied.added) closeSourceForm();
+    }
+
+    function triggerImportFile() {
+        const file = document.getElementById('sourceImportFile');
+        if (file) file.click();
+    }
+
+    function handleImportFile(event) {
+        const input = event && event.target;
+        const file = input && input.files && input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function () {
+            const content = String(reader.result || '');
+            openTextImportDialog(content);
+            if (input) input.value = '';
+        };
+        reader.onerror = function () {
+            toast('读取文件失败', 'error');
+            if (input) input.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    async function importSourcesFromUrl(rawUrl) {
+        const button = document.getElementById('sourceDialogConfirm');
+        const raw = String(rawUrl == null ? '' : rawUrl).trim();
+
+        if (!/^https?:\/\//i.test(raw)) {
+            toast('请填写以 http:// 或 https:// 开头的地址', 'warning');
+            return;
+        }
+
+        // 已经存在同名地址视为覆盖，先清掉输入框的旧值无意义，这里直接拉取
+        if (button) {
+            button.disabled = true;
+            button.textContent = '拉取中…';
+        }
+
+        try {
+            let target = PROXY_URL + encodeURIComponent(raw);
+            if (window.ProxyAuth && typeof window.ProxyAuth.addAuthToProxyUrl === 'function') {
+                target = await window.ProxyAuth.addAuthToProxyUrl(target);
+            }
+
+            const response = await fetch(target, {
+                headers: { 'Accept': 'application/json, text/plain, */*' }
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+
+            const content = await response.text();
+            const result = parseSourcePayload(content);
+            if (result.error) {
+                toast(result.error, 'warning');
+                return;
+            }
+
+            const applied = importSourceItems(result.items);
+            reportImport(applied, result.invalid);
+            if (applied.added) closeSourceForm();
+        } catch (error) {
+            toast('从 URL 导入失败：' + (error && error.message ? error.message : error), 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = '拉取并导入';
+            }
+        }
+    }
+
+    // 导出为内置源同构的 { name, url, adult }，自定义源的 detail 有值时才带上
+    function exportPayload() {
+        return allSources().map(function (source) {
+            const item = { name: source.name, url: source.url, adult: !!source.adult };
+            if (source.type === 'custom' && source.detail) item.detail = source.detail;
+            return item;
+        });
+    }
+
+    function exportFileName() {
+        const now = new Date();
+        const pad = function (value) { return (value < 10 ? '0' : '') + value; };
+        return 'libretv-sources-' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + '.json';
+    }
+
+    function exportSourcesToFile() {
+        closeAddSourceMenu();
+        const items = exportPayload();
+        try {
+            const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = exportFileName();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            toast('已导出 ' + items.length + ' 个视频源', 'success');
+        } catch (error) {
+            toast('导出失败：' + (error && error.message ? error.message : error), 'error');
+        }
+    }
+
+    function legacyCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-1000px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        let ok = false;
+        try {
+            ok = document.execCommand('copy');
+        } catch (error) {
+            ok = false;
+        }
+        document.body.removeChild(textarea);
+        return ok;
+    }
+
+    async function exportSourcesToClipboard() {
+        closeAddSourceMenu();
+        const items = exportPayload();
+        const data = JSON.stringify(items, null, 2);
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(data);
+                toast('已复制 ' + items.length + ' 个视频源的 JSON', 'success');
+                return;
+            }
+        } catch (error) {
+            // 非安全上下文或权限被拒绝时走 execCommand 兜底
+        }
+
+        if (legacyCopy(data)) {
+            toast('已复制 ' + items.length + ' 个视频源的 JSON', 'success');
+        } else {
+            toast('复制失败，请改用「导出为文件」', 'error');
+        }
+    }
+
+    // ---------------- 添加源浮窗菜单 ----------------
+
+    function toggleAddSourceMenu(event) {
+        if (event) event.stopPropagation();
+        const menu = document.getElementById('addSourceMenu');
+        const button = document.getElementById('addSourceMenuBtn');
+        if (!menu) return;
+        const willOpen = menu.classList.contains('hidden');
+        menu.classList.toggle('hidden', !willOpen);
+        if (button) button.setAttribute('aria-expanded', String(willOpen));
+        if (willOpen) closeSourceSubmenu();
+    }
+
+    function closeAddSourceMenu() {
+        const menu = document.getElementById('addSourceMenu');
+        const button = document.getElementById('addSourceMenuBtn');
+        if (menu) menu.classList.add('hidden');
+        if (button) button.setAttribute('aria-expanded', 'false');
+        closeSourceSubmenu();
+    }
+
+    // 二级浮窗弹出后会超出设置面板时，改用菜单内钻取，避免被裁切
+    function submenuOverflowsPanel(submenu) {
+        const settingsPanel = document.getElementById('settingsPanel');
+        if (!submenu || !settingsPanel) return false;
+        const subRect = submenu.getBoundingClientRect();
+        const panelRect = settingsPanel.getBoundingClientRect();
+        return subRect.width > 0 && (subRect.right > panelRect.right - 4 || subRect.left < panelRect.left + 4);
+    }
+
+    function toggleSourceSubmenu(name, event) {
+        if (event) event.stopPropagation();
+        const panel = document.getElementById(name === 'import' ? 'sourceSubmenuImport' : 'sourceSubmenuExport');
+        const trigger = document.getElementById(name === 'import' ? 'sourceSubmenuImportBtn' : 'sourceSubmenuExportBtn');
+        if (!panel) return;
+        const willOpen = panel.classList.contains('hidden');
+
+        closeSourceSubmenu();
+        if (!willOpen) return;
+
+        panel.classList.remove('hidden');
+        if (trigger) trigger.setAttribute('aria-expanded', 'true');
+
+        // 放得下就并排浮窗，放不下才在菜单里切换成二级页面
+        const menu = document.getElementById('addSourceMenu');
+        const group = trigger && trigger.closest ? trigger.closest('.settings-menu-group') : null;
+        if (menu && group && submenuOverflowsPanel(panel)) {
+            menu.classList.add('is-drilling');
+            group.classList.add('is-active');
+        }
+    }
+
+    function closeSourceSubmenu() {
+        [
+            ['sourceSubmenuImport', 'sourceSubmenuImportBtn'],
+            ['sourceSubmenuExport', 'sourceSubmenuExportBtn']
+        ].forEach(function (pair) {
+            const panel = document.getElementById(pair[0]);
+            const trigger = document.getElementById(pair[1]);
+            if (panel) panel.classList.add('hidden');
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        });
+
+        const menu = document.getElementById('addSourceMenu');
+        if (menu) menu.classList.remove('is-drilling');
+        document.querySelectorAll('#addSourceMenu .settings-menu-group.is-active').forEach(function (group) {
+            group.classList.remove('is-active');
+        });
+    }
+
+    function startManualAdd() {
+        closeAddSourceMenu();
+        openSourceForm();
+    }
+
+    function startImportFile() {
+        closeAddSourceMenu();
+        triggerImportFile();
+    }
+
+    function startImportUrl() {
+        openUrlImportDialog();
+    }
+
+    function startImportText() {
+        openTextImportDialog();
     }
 
     // ---------------- 健康检查 ----------------
@@ -759,17 +1213,27 @@
     // ---------------- 初始化 ----------------
 
     function ensureDefaults() {
-        if (localStorage.getItem('hasInitializedDefaults')) return;
+        const sites = (typeof API_SITES !== 'undefined' && API_SITES) || [];
+        const siteList = Array.isArray(sites) ? sites : [];
 
-        const sites = (typeof API_SITES !== 'undefined' && API_SITES) || {};
-        const defaults = ['tyyszy', 'bfzy', 'dyttzy', 'ruyi'].filter(function (id) { return !!sites[id]; });
+        // 默认选中前 5 条视频源
+        const defaults = siteList.slice(0, 5).map(function (site) { return site.url; });
+
+        const initialized = localStorage.getItem('hasInitializedDefaults') === 'true';
+        const hasValidSelection = Array.isArray(selectedAPIs) && selectedAPIs.some(function (id) {
+            return (typeof id === 'string' && id.indexOf('custom_') === 0) || !!getAPISite(id);
+        });
+        if (initialized && hasValidSelection) return;
 
         selectedAPIs = defaults;
         localStorage.setItem('selectedAPIs', JSON.stringify(defaults));
-        localStorage.setItem('yellowFilterEnabled', 'true');
-        localStorage.setItem(adFilterKey(), 'true');
-        localStorage.setItem('doubanEnabled', 'true');
-        localStorage.setItem('hasInitializedDefaults', 'true');
+
+        if (!initialized) {
+            localStorage.setItem('yellowFilterEnabled', 'true');
+            localStorage.setItem(adFilterKey(), 'true');
+            localStorage.setItem('doubanEnabled', 'true');
+            localStorage.setItem('hasInitializedDefaults', 'true');
+        }
     }
 
     function bindSourceListEvents() {
@@ -849,7 +1313,13 @@
         // 面板打开时锁定页面滚动，关闭时恢复，避免移动端滑动穿透
         const panel = document.getElementById('settingsPanel');
         const syncBodyScrollLock = function () {
-            document.body.classList.toggle('settings-open', panel.classList.contains('show'));
+            const open = panel.classList.contains('show');
+            document.body.classList.toggle('settings-open', open);
+            // 抽屉关闭时一并收起浮窗菜单、弹窗与导入面板，避免残留在页面上
+            if (!open) {
+                closeAddSourceMenu();
+                closeSourceForm();
+            }
         };
         syncBodyScrollLock();
         new MutationObserver(syncBodyScrollLock).observe(panel, {
@@ -906,6 +1376,24 @@
         initGeneralSettings();
         initPlaybackSettings();
         renderSourceList();
+
+        // 添加源浮窗：点击空白处或按 Esc 关闭
+        document.addEventListener('click', function (event) {
+            const menu = document.getElementById('addSourceMenu');
+            if (!menu || menu.classList.contains('hidden')) return;
+            if (event.target.closest('.settings-menu-wrap')) return;
+            closeAddSourceMenu();
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            const dialog = document.getElementById('sourceDialog');
+            if (dialog && !dialog.classList.contains('hidden')) {
+                closeSourceForm();
+                return;
+            }
+            closeAddSourceMenu();
+        });
+
         switchSettingsTab(localStorage.getItem(ACTIVE_TAB_KEY) || 'sources');
         enforceAdultRule();
     }
@@ -916,9 +1404,25 @@
     window.openSourceForm = openSourceForm;
     window.closeSourceForm = closeSourceForm;
     window.saveSourceForm = saveSourceForm;
+    window.openUrlImportDialog = openUrlImportDialog;
+    window.confirmSourceDialog = confirmSourceDialog;
     window.testAllSources = testAllSources;
     window.toggleAllSources = toggleAllSources;
     window.sortSourcesByLatency = sortSourcesByLatency;
+    window.openTextImportDialog = openTextImportDialog;
+    window.importSourcesFromText = importSourcesFromText;
+    window.importSourcesFromUrl = importSourcesFromUrl;
+    window.triggerImportFile = triggerImportFile;
+    window.handleImportFile = handleImportFile;
+    window.exportSourcesToFile = exportSourcesToFile;
+    window.exportSourcesToClipboard = exportSourcesToClipboard;
+    window.toggleAddSourceMenu = toggleAddSourceMenu;
+    window.closeAddSourceMenu = closeAddSourceMenu;
+    window.toggleSourceSubmenu = toggleSourceSubmenu;
+    window.startManualAdd = startManualAdd;
+    window.startImportFile = startImportFile;
+    window.startImportUrl = startImportUrl;
+    window.startImportText = startImportText;
     window.initSettingsPanel = initSettingsPanel;
 
     // 供 player.js 复用的缓冲档位表
