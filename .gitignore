@@ -23,3 +23,5 @@ coverage
 *.sln
 *.sw?
 .env
+.next
+.workbuddy

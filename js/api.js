@@ -276,9 +276,78 @@ async function handleCustomApiSpecialDetail(id, customApi) {
     }
 }
 
+// 从 vod_play_url 中解析第一组播放地址
+function parsePlayUrl(playUrl) {
+    const episodes = [];
+    if (!playUrl) return episodes;
+
+    // 分割不同播放源，取第一个（通常为主要源）
+    const playSources = String(playUrl).split('$$$');
+    if (playSources.length === 0) return episodes;
+
+    playSources[0].split('#').forEach(ep => {
+        const parts = ep.split('$');
+        const url = parts.length > 1 ? parts[1] : '';
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            episodes.push(url);
+        }
+    });
+
+    return episodes;
+}
+
 // 通用特殊源详情处理函数
 async function handleSpecialSourceDetail(id, sourceCode) {
     try {
+        // 优先使用采集站的 JSON 详情接口，HTML 详情页经常被反爬页（Verify Yourself）拦截
+        try {
+            const base = API_SITES[sourceCode].api;
+            const separator = base.indexOf('?') !== -1 ? '&' : '?';
+            const apiDetailUrl = `${base}${separator}ac=detail&ids=${encodeURIComponent(id)}`;
+
+            const apiController = new AbortController();
+            const apiTimeoutId = setTimeout(() => apiController.abort(), 10000);
+
+            const proxiedApiUrl = await window.ProxyAuth?.addAuthToProxyUrl ?
+                await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(apiDetailUrl)) :
+                PROXY_URL + encodeURIComponent(apiDetailUrl);
+
+            const apiResponse = await fetch(proxiedApiUrl, {
+                headers: API_CONFIG.detail.headers,
+                signal: apiController.signal
+            });
+            clearTimeout(apiTimeoutId);
+
+            if (apiResponse.ok) {
+                const apiData = await apiResponse.json();
+                const videoDetail = apiData && apiData.list && apiData.list[0];
+                const episodes = videoDetail ? parsePlayUrl(videoDetail.vod_play_url) : [];
+
+                if (episodes.length > 0) {
+                    return JSON.stringify({
+                        code: 200,
+                        episodes: episodes,
+                        detailUrl: apiDetailUrl,
+                        videoInfo: {
+                            title: videoDetail.vod_name,
+                            cover: videoDetail.vod_pic,
+                            desc: videoDetail.vod_content,
+                            type: videoDetail.type_name,
+                            year: videoDetail.vod_year,
+                            area: videoDetail.vod_area,
+                            director: videoDetail.vod_director,
+                            actor: videoDetail.vod_actor,
+                            remarks: videoDetail.vod_remarks,
+                            source_name: API_SITES[sourceCode].name,
+                            source_code: sourceCode
+                        }
+                    });
+                }
+            }
+        } catch (apiError) {
+            console.warn(`${API_SITES[sourceCode].name} JSON 详情失败，回退 HTML 详情:`, apiError);
+        }
+
         // 构建详情页URL（使用配置中的detail URL而不是api URL）
         const detailUrl = `${API_SITES[sourceCode].detail}/index.php/vod/detail/id/${id}.html`;
         

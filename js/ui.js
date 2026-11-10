@@ -192,9 +192,10 @@ function saveSearchHistory(query) {
         timestamp: now
     });
 
-    // 限制历史记录数量
-    if (history.length > MAX_HISTORY_ITEMS) {
-        history = history.slice(0, MAX_HISTORY_ITEMS);
+    // 限制历史记录数量（上限可在设置页配置）
+    const maxHistoryItems = typeof getMaxHistoryItems === 'function' ? getMaxHistoryItems() : MAX_HISTORY_ITEMS;
+    if (history.length > maxHistoryItems) {
+        history = history.slice(0, maxHistoryItems);
     }
 
     try {

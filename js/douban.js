@@ -60,33 +60,14 @@ function initDouban() {
     if (doubanToggle) {
         const isEnabled = localStorage.getItem('doubanEnabled') === 'true';
         doubanToggle.checked = isEnabled;
-        
-        // 设置开关外观
-        const toggleBg = doubanToggle.nextElementSibling;
-        const toggleDot = toggleBg.nextElementSibling;
-        if (isEnabled) {
-            toggleBg.classList.add('bg-pink-600');
-            toggleDot.classList.add('translate-x-6');
-        }
-        
-        // 添加事件监听
+
+        // 开关外观由 .settings-switch 的 CSS 控制，这里只同步状态
         doubanToggle.addEventListener('change', function(e) {
             const isChecked = e.target.checked;
-            localStorage.setItem('doubanEnabled', isChecked);
-            
-            // 更新开关外观
-            if (isChecked) {
-                toggleBg.classList.add('bg-pink-600');
-                toggleDot.classList.add('translate-x-6');
-            } else {
-                toggleBg.classList.remove('bg-pink-600');
-                toggleDot.classList.remove('translate-x-6');
-            }
-            
-            // 更新显示状态
+            localStorage.setItem('doubanEnabled', String(isChecked));
             updateDoubanVisibility();
         });
-        
+
         // 初始更新显示状态
         updateDoubanVisibility();
 
@@ -529,19 +510,20 @@ function renderDoubanCards(data, container) {
                 .replace(/>/g, '&gt;');
             
             // 处理图片URL
-            // 1. 直接使用豆瓣图片URL (添加no-referrer属性)
-            const originalCoverUrl = item.cover;
-            
-            // 2. 也准备代理URL作为备选
-            const proxiedCoverUrl = PROXY_URL + encodeURIComponent(originalCoverUrl);
+            // 豆瓣 CDN 需要 Referer，浏览器直接请求会被 ORB 拦截，统一走本地代理（带鉴权参数）
+            const originalCoverUrl = item.cover || '';
+            const authHash = window.__ENV__ && window.__ENV__.PASSWORD;
+            const authQuery = authHash ? ('?auth=' + encodeURIComponent(authHash) + '&t=' + Date.now()) : '';
+            const proxiedCoverUrl = originalCoverUrl
+                ? PROXY_URL + encodeURIComponent(originalCoverUrl) + authQuery
+                : '';
             
             // 为不同设备优化卡片布局
             card.innerHTML = `
                 <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
-                    <img src="${originalCoverUrl}" alt="${safeTitle}" 
+                    <img src="${proxiedCoverUrl}" alt="${safeTitle}" 
                         class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                        onerror="this.onerror=null; this.src='${proxiedCoverUrl}'; this.classList.add('object-contain');"
-                        loading="lazy" referrerpolicy="no-referrer">
+                        loading="lazy">
                     <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
                     <div class="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-sm">
                         <span class="text-yellow-400">★</span> ${safeRate}

@@ -111,11 +111,15 @@ async function searchByAPIAndKeyWord(apiId, query) {
             // 等待所有额外页的结果
             const additionalResults = await Promise.all(additionalPagePromises);
             
-            // 合并所有页的结果
+            // 合并所有页的结果（只保留标题包含关键词的条目，避免采集站分页返回全站内容）
+            const keyword = String(query || '').toLowerCase();
             additionalResults.forEach(pageResults => {
-                if (pageResults.length > 0) {
-                    results.push(...pageResults);
-                }
+                pageResults.forEach(item => {
+                    const title = String(item.vod_name || '').toLowerCase();
+                    if (!keyword || title.indexOf(keyword) !== -1) {
+                        results.push(item);
+                    }
+                });
             });
         }
         

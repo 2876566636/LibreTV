@@ -5,6 +5,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
+import os from 'os';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -163,7 +164,8 @@ app.get('/proxy/:encodedUrl', async (req, res) => {
     }
 
     const encodedUrl = req.params.encodedUrl;
-    const targetUrl = decodeURIComponent(encodedUrl);
+    // Express 可能已对路由参数解码一次；只在仍是 %3A 形式时再解码，避免把中文等二次解码
+    const targetUrl = /^https?%3A/i.test(encodedUrl) ? decodeURIComponent(encodedUrl) : encodedUrl;
 
     // 安全验证
     if (!isValidUrl(targetUrl)) {
@@ -178,14 +180,29 @@ app.get('/proxy/:encodedUrl', async (req, res) => {
     
     const makeRequest = async () => {
       try {
+        const target = new URL(targetUrl);
+        const requestHeaders = {
+          'User-Agent': config.userAgent
+        };
+
+        // 豆瓣接口与图片 CDN 都会校验 Referer，代理默认不带会被 403/418
+        const isDouban = target.hostname === 'douban.com'
+          || target.hostname.endsWith('.douban.com')
+          || target.hostname === 'doubanio.com'
+          || target.hostname.endsWith('.doubanio.com');
+        if (isDouban) {
+          requestHeaders['Referer'] = 'https://movie.douban.com/';
+          requestHeaders['Accept'] = 'application/json, text/plain, */*';
+        }
+
         return await axios({
           method: 'get',
           url: targetUrl,
           responseType: 'stream',
           timeout: config.timeout,
-          headers: {
-            'User-Agent': config.userAgent
-          }
+          headers: requestHeaders,
+          // 代理服务自身直连目标；避免系统 HTTP_PROXY（如本地代理软件）把 HTTPS 请求发错端口
+          proxy: false
         });
       } catch (error) {
         if (retries < maxRetries) {
@@ -222,8 +239,11 @@ app.get('/proxy/:encodedUrl', async (req, res) => {
   }
 });
 
+// 生产环境使用长效静态缓存；本地开发禁用缓存，避免改了 css/js 后浏览器仍加载旧文件
+const staticMaxAge = process.env.NODE_ENV === 'production' ? config.cacheMaxAge : 0;
+
 app.use(express.static(path.join(__dirname), {
-  maxAge: config.cacheMaxAge
+  maxAge: staticMaxAge
 }));
 
 app.use((err, req, res, next) => {
@@ -235,9 +255,34 @@ app.use((req, res) => {
   res.status(404).send('页面未找到');
 });
 
+// 获取本机局域网 IPv4 地址（用于手机等设备访问）
+function getLocalIPv4Addresses() {
+  const addresses = [];
+  const interfaces = os.networkInterfaces();
+  Object.keys(interfaces).forEach(name => {
+    (interfaces[name] || []).forEach(net => {
+      if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254.')) {
+        addresses.push(net.address);
+      }
+    });
+  });
+  return addresses;
+}
+
 // 启动服务器
 app.listen(config.port, () => {
   console.log(`服务器运行在 http://localhost:${config.port}`);
+
+  const lanAddresses = getLocalIPv4Addresses();
+  if (lanAddresses.length > 0) {
+    lanAddresses.forEach(address => {
+      console.log(`局域网访问: http://${address}:${config.port}`);
+    });
+    console.log(`手机与电脑连同一网络后，用上面的地址访问；打不开请放行防火墙 ${config.port} 端口`);
+  } else {
+    console.log('未检测到局域网 IPv4 地址，手机访问请先检查网络连接');
+  }
+
   if (config.password !== '') {
     console.log('用户登录密码已设置');
   } else {

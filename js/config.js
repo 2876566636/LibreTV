@@ -2,7 +2,18 @@
 const PROXY_URL = '/proxy/';    // 适用于 Cloudflare, Netlify (带重写), Vercel (带重写)
 // const HOPLAYER_URL = 'https://hoplayer.com/index.html';
 const SEARCH_HISTORY_KEY = 'videoSearchHistory';
-const MAX_HISTORY_ITEMS = 5;
+const DEFAULT_MAX_HISTORY_ITEMS = 10;
+const MAX_HISTORY_ITEMS = DEFAULT_MAX_HISTORY_ITEMS;
+const SEARCH_HISTORY_LIMIT_KEY = 'searchHistoryLimit';
+
+// 搜索历史条数可由用户在设置页配置，范围 1-50
+function getMaxHistoryItems() {
+    const value = Number.parseInt(localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY), 10);
+    if (Number.isFinite(value) && value >= 1 && value <= 50) {
+        return value;
+    }
+    return DEFAULT_MAX_HISTORY_ITEMS;
+}
 
 // 密码保护配置
 // 注意：PASSWORD 环境变量是必需的，所有部署都必须设置密码以确保安全
@@ -174,7 +185,7 @@ const API_CONFIG = {
         // 只拼接参数部分，不再包含 /api.php/provide/vod/
         path: '?ac=videolist&wd=',
         pagePath: '?ac=videolist&wd={query}&pg={page}',
-        maxPages: 50, // 最大获取页数
+        maxPages: 3, // 最大获取页数（采集站的 pagecount 多为全站总数，取太多会混入大量无关结果）
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept': 'application/json'

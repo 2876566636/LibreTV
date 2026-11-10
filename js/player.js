@@ -1,6 +1,25 @@
 const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
 const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
+// 播放设置（由首页设置面板写入，播放器页面读取）
+const mobileGestureEnabled = localStorage.getItem('mobileGestureEnabled') !== 'false';
+
+const longPressSpeedRate = (function () {
+    const value = parseFloat(localStorage.getItem('longPressSpeedRate'));
+    return Number.isFinite(value) && value >= 1 && value <= 5 ? value : 3;
+})();
+
+const playbackBufferLevel = (function () {
+    const value = localStorage.getItem('playbackBufferLevel');
+    return ['low', 'normal', 'high'].indexOf(value) !== -1 ? value : 'normal';
+})();
+
+const PLAYBACK_BUFFER_PROFILES = {
+    low: { maxBufferLength: 10, maxMaxBufferLength: 20, maxBufferSize: 10 * 1000 * 1000, backBufferLength: 30 },
+    normal: { maxBufferLength: 30, maxMaxBufferLength: 60, maxBufferSize: 30 * 1000 * 1000, backBufferLength: 90 },
+    high: { maxBufferLength: 60, maxMaxBufferLength: 120, maxBufferSize: 60 * 1000 * 1000, backBufferLength: 120 }
+};
+
 // 改进返回功能
 function goBack(event) {
     // 防止默认链接行为
@@ -408,16 +427,17 @@ function initPlayer(videoUrl) {
         art = null;
     }
 
-    // 配置HLS.js选项
+    // 配置HLS.js选项（缓冲档位来自设置面板）
+    const bufferProfile = PLAYBACK_BUFFER_PROFILES[playbackBufferLevel] || PLAYBACK_BUFFER_PROFILES.normal;
     const hlsConfig = {
         debug: false,
         loader: adFilteringEnabled ? CustomHlsJsLoader : Hls.DefaultConfig.loader,
         enableWorker: true,
         lowLatencyMode: false,
-        backBufferLength: 90,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-        maxBufferSize: 30 * 1000 * 1000,
+        backBufferLength: bufferProfile.backBufferLength,
+        maxBufferLength: bufferProfile.maxBufferLength,
+        maxMaxBufferLength: bufferProfile.maxMaxBufferLength,
+        maxBufferSize: bufferProfile.maxBufferSize,
         maxBufferHole: 0.5,
         fragLoadingMaxRetry: 6,
         fragLoadingMaxRetryTimeout: 64000,
@@ -463,6 +483,7 @@ function initPlayer(videoUrl) {
         mutex: true,
         backdrop: true,
         playsInline: true,
+        gesture: mobileGestureEnabled,
         autoPlayback: false,
         airplay: true,
         hotkey: false,
@@ -707,7 +728,7 @@ function initPlayer(videoUrl) {
         showError('视频播放失败: ' + (error.message || '未知错误'));
     });
 
-    // 添加移动端长按三倍速播放功能
+    // 添加移动端长按倍速播放功能
     setupLongPressSpeedControl();
 
     // 视频播放结束事件
@@ -1270,9 +1291,10 @@ function saveCurrentProgress() {
     }
 }
 
-// 设置移动端长按三倍速播放功能
+// 设置移动端长按倍速播放功能（倍率与开关来自设置面板）
 function setupLongPressSpeedControl() {
     if (!art || !art.video) return;
+    if (!mobileGestureEnabled) return;
 
     const playerElement = document.getElementById('player');
     let longPressTimer = null;
@@ -1319,10 +1341,10 @@ function setupLongPressSpeedControl() {
                 return;
             }
 
-            // 长按超过500ms，设置为3倍速
-            art.video.playbackRate = 3.0;
+            // 长按超过500ms，临时切换到设置的倍率
+            art.video.playbackRate = longPressSpeedRate;
             isLongPress = true;
-            showSpeedHint(3.0);
+            showSpeedHint(longPressSpeedRate);
 
             // 只在确认为长按时阻止默认行为
             e.preventDefault();
