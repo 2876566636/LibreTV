@@ -10,7 +10,7 @@
 
 LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供来自多个视频源的内容搜索与播放服务。无需注册，即开即用，支持多种设备访问。项目结合了前端技术和后端代理功能，可部署在支持服务端功能的各类网站托管服务上。
 
-仓库地址：<https://github.com/2876566636/LibreTV>
+仓库地址：<https://github.com/LibreSpark/LibreTV>
 
 本项目基于 [bestK/tv](https://github.com/bestK/tv) 进行重构与增强。
 
@@ -21,7 +21,7 @@ LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供
 
 ## 🚀 快速部署
 
-本项目是独立仓库（<https://github.com/2876566636/LibreTV>），部署时使用这个仓库地址即可。各平台的具体步骤见下方「详细部署指南」：Vercel、Netlify、Render、Cloudflare Pages、Docker 均可直接使用本仓库内的配置文件。
+部署时使用本仓库地址即可，各平台的具体步骤见下方「详细部署指南」：Vercel、Netlify、Render、Cloudflare Pages、Docker 均可直接使用本仓库内的配置文件。
 
 ## 🚨 重要声明
 
@@ -97,7 +97,7 @@ docker compose up -d
 
 ```bash
 # 克隆仓库
-git clone git@github.com:2876566636/LibreTV.git
+git clone https://github.com/LibreSpark/LibreTV.git
 cd LibreTV
 
 # 首先，通过复制示例来设置 .env 文件（可选）

@@ -19,7 +19,7 @@
 
 2. **克隆仓库**
    ```bash
-   git clone git@github.com:2876566636/LibreTV.git
+   git clone https://github.com/LibreSpark/LibreTV.git
    cd LibreTV
    ```
 
@@ -50,7 +50,7 @@
 
 如果您发现了 bug 或希望建议新功能：
 
-1. 首先查看 [Issues](https://github.com/2876566636/LibreTV/issues) 确保问题尚未被报告
+1. 首先查看 [Issues](https://github.com/LibreSpark/LibreTV/issues) 确保问题尚未被报告
 2. 创建新的 Issue，请包含：
    - 清晰的标题和描述
    - 重现步骤（如果是 bug）
@@ -264,8 +264,8 @@ function search(k) {
 
 如果您有任何问题或需要帮助：
 
-- **GitHub Issues**: [报告问题或建议](https://github.com/2876566636/LibreTV/issues)
-- **GitHub Discussions**: [参与社区讨论](https://github.com/2876566636/LibreTV/discussions)
+- **GitHub Issues**: [报告问题或建议](https://github.com/LibreSpark/LibreTV/issues)
+- **GitHub Discussions**: [参与社区讨论](https://github.com/LibreSpark/LibreTV/discussions)
 - **Email**: 通过 GitHub 联系项目维护者
 
 ## 🙏 致谢
