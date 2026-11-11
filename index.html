@@ -43,11 +43,7 @@
             </header>
             
 
-            <!-- 搜索框已移入全局 titlebar，这里只是历史遗留的占位节点（app.js 会切它的 class），
-                 不再参与布局，否则 flex-1 会在高窗口下撑出一大块空白 -->
-            <div id="searchArea" class="hidden" aria-hidden="true"></div>
-            
-            <!-- 豆瓣热门推荐区域: 默认隐藏，现在位于搜索区域下方，调整宽度 -->
+            <!-- 豆瓣热门推荐区域 -->
             <div id="doubanArea" class="w-full mt-2 mb-8 hidden">
                 <div class="mx-auto max-w-screen-xl px-2">
                     <!-- 改进标题和标签区域布局 -->
@@ -225,12 +221,12 @@
     <script src="js/overlay-guard.js?v=20261110-2"></script>
     <script src="js/proxy-auth.js"></script>
     <script src="js/customer_site.js"></script>
-    <script src="js/ui.js?v=20261110-13"></script>
+    <script src="js/ui.js?v=20261111-2"></script>
     <script src="js/api.js?v=20261110-8"></script>
     <script src="js/douban.js?v=20261110-7"></script>
     <script src="js/password.js?v=20261110-1"></script>
     <script src="js/search.js?v=20261110-6"></script>
-    <script src="js/app.js?v=20261111-1"></script>
+    <script src="js/app.js?v=20261111-3"></script>
     <script src="js/settings-bootstrap.js?v=20261110-1"></script>
     <script src="js/components/video-detail.js?v=20261110-2"></script>
     <!-- js/settings.js 由设置面板组件在首次打开时按需加载 -->
@@ -252,6 +248,6 @@
     <script src="js/version-check.js"></script>
 
     <!-- 添加弹窗和URL搜索参数处理脚本 -->
-    <script src="js/index-page.js"></script>
+    <script src="js/index-page.js?v=20261111-1"></script>
 </body>
 </html>

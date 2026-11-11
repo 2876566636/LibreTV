@@ -98,9 +98,6 @@ function resetSearchArea() {
     document.getElementById('results').innerHTML = '';
     document.getElementById('searchInput').value = '';
 
-    // 恢复搜索区域的样式
-    document.getElementById('searchArea').classList.add('flex-1');
-    document.getElementById('searchArea').classList.remove('mb-8');
     document.getElementById('resultsArea').classList.add('hidden');
 
     // 确保页脚正确显示，移除相对定位
@@ -213,9 +210,7 @@ async function search() {
             searchResultsCount.textContent = allResults.length;
         }
 
-        // 显示结果区域，调整搜索区域
-        document.getElementById('searchArea').classList.remove('flex-1');
-        document.getElementById('searchArea').classList.add('mb-8');
+        // 显示结果区域
         document.getElementById('resultsArea').classList.remove('hidden');
 
         // 隐藏豆瓣推荐区域（如果存在）
@@ -396,7 +391,7 @@ function hookInput() {
 document.addEventListener('DOMContentLoaded', hookInput);
 
 // 显示详情 - 修改为支持自定义API
-// 更新播放视频函数，修改为使用/watch路径而不是直接打开player.html
+// 直接跳播放页；原来经 watch.html 中转（3 秒动画）已移除，参数在这里一次性拼好
 function playVideo(url, vod_name, sourceCode, episodeIndex = 0, vodId = '') {
     // 密码保护校验
     if (window.isPasswordProtected && window.isPasswordVerified) {
@@ -406,16 +401,8 @@ function playVideo(url, vod_name, sourceCode, episodeIndex = 0, vodId = '') {
         }
     }
 
-    // 获取当前路径作为返回页面
-    let currentPath = window.location.href;
-
-    // 构建播放页面URL，使用watch.html作为中间跳转页
-    let watchUrl = `watch.html?id=${vodId || ''}&source=${sourceCode || ''}&url=${encodeURIComponent(url)}&index=${episodeIndex}&title=${encodeURIComponent(vod_name || '')}`;
-
-    // 添加返回URL参数
-    if (currentPath.includes('index.html') || currentPath.endsWith('/')) {
-        watchUrl += `&back=${encodeURIComponent(currentPath)}`;
-    }
+    // 获取当前页面作为返回地址
+    const currentPath = window.location.href;
 
     // 保存当前状态到localStorage
     try {
@@ -430,8 +417,18 @@ function playVideo(url, vod_name, sourceCode, episodeIndex = 0, vodId = '') {
         console.error('保存播放状态失败:', e);
     }
 
+    // 直接构建播放页 URL（等价于原来 watch.html 转发的那套参数）
+    // returnUrl 保持 encodeURIComponent 编码，player.js 的 goBack 会再 decode 一次
+    const params = new URLSearchParams();
+    params.set('id', vodId || '');
+    params.set('source', sourceCode || '');
+    params.set('url', url);
+    params.set('index', String(episodeIndex));
+    params.set('title', vod_name || '');
+    params.set('returnUrl', encodeURIComponent(currentPath));
+
     // 在当前标签页中打开播放页面
-    window.location.href = watchUrl;
+    window.location.href = 'player.html?' + params.toString();
 }
 
 // 弹出播放器页面

@@ -716,7 +716,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
 
         // 保存当前页面URL作为返回地址
         let currentPath;
-        if (window.location.pathname.startsWith('/player.html') || window.location.pathname.startsWith('/watch.html')) {
+        if (window.location.pathname.startsWith('/player.html')) {
             currentPath = localStorage.getItem('lastPageUrl') || '/';
         } else {
             currentPath = window.location.origin + window.location.pathname + window.location.search;
@@ -730,7 +730,7 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         const idForUrl = historyItem ? historyItem.vod_id : '';
 
 
-        if (url.includes('player.html') || url.includes('watch.html')) {
+        if (url.includes('player.html')) {
             // console.log('检测到嵌套播放链接，解析真实URL');
             try {
                 const nestedUrl = new URL(url, window.location.origin);
