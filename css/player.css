@@ -543,3 +543,192 @@ input:checked + .slider:before {
 #username {
     display: none !important;
 }
+
+/* 切换资源弹窗的状态文案（搜索中 / 无结果 / 未启用源） */
+.switch-status {
+    grid-column: 1 / -1;
+    padding: 26px 18px;
+    text-align: center;
+    color: #9aa7b8;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+/* 切换资源的列表：长条形 item，左封面 + 右信息
+   左右不留内边距，让卡片与弹窗标题左边缘对齐 */
+.switch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 0 4px;
+}
+
+.switch-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(0, 204, 255, 0.12);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+/* hover 只在真有鼠标的设备生效：手机长按/滑动后 :hover 会一直挂在元素上，
+   列表项就会「常亮」不熄灭 */
+@media (hover: hover) and (pointer: fine) {
+    .switch-item:hover {
+        background: rgba(0, 204, 255, 0.1);
+        border-color: rgba(0, 204, 255, 0.36);
+    }
+
+    .switch-item:hover .switch-arrow { color: #00ccff; }
+}
+
+.switch-item:active { transform: scale(0.995); }
+
+/* 触屏用按下反馈代替 hover：按下才高亮，松手立刻恢复 */
+@media (hover: none) {
+    .switch-item:active {
+        background: rgba(0, 204, 255, 0.1);
+        border-color: rgba(0, 204, 255, 0.36);
+    }
+}
+
+/* 正在播放的源：不可点、整体压暗，右侧显示「当前播放」 */
+.switch-item.is-current {
+    cursor: default;
+    background: rgba(0, 204, 255, 0.07);
+    border-color: rgba(0, 204, 255, 0.3);
+}
+
+.switch-item.is-current:active {
+    background: rgba(0, 204, 255, 0.07);
+    border-color: rgba(0, 204, 255, 0.3);
+    transform: none;
+}
+
+.switch-item.is-current .switch-cover,
+.switch-item.is-current .switch-info { opacity: 0.6; }
+
+.switch-cover {
+    flex: none;
+    width: 52px;
+    height: 70px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1b2432;
+}
+
+.switch-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.switch-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.switch-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e6f2ff;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.switch-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #8fa3bb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.switch-tail {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.switch-arrow {
+    font-size: 20px;
+    line-height: 1;
+    color: #6b8199;
+}
+
+.switch-current {
+    font-size: 12px;
+    color: #4ea8ff;
+    white-space: nowrap;
+}
+
+/* 列表底部的「正在搜索其余 N 个源」提示，比空态提示更轻 */
+.switch-status-inline {
+    padding: 4px 0 14px;
+    font-size: 12px;
+}
+
+@media (max-width: 640px) {
+    .switch-list {
+        gap: 6px;
+        padding: 10px 12px 6px;
+    }
+
+    .switch-item {
+        gap: 10px;
+        padding: 6px 10px;
+        border-radius: 10px;
+    }
+
+    .switch-cover {
+        width: 44px;
+        height: 60px;
+        border-radius: 7px;
+    }
+
+    .switch-title { font-size: 13px; }
+    .switch-meta { font-size: 11px; }
+}
+
+
+/* 手机端：换源弹窗收紧内边距，避免两侧与标题下方大片留白
+   面板默认是 Tailwind 的 p-8 + w-11/12，桌面合适，手机上太松 */
+@media (max-width: 640px) {
+    body[data-modal-variant="switch"] .modal-panel {
+        width: calc(100% - 20px);
+        padding: 12px 12px 14px;
+        border-radius: 12px;
+        max-height: 86vh;
+    }
+
+    body[data-modal-variant="switch"] .modal-head {
+        margin-bottom: 8px;
+        align-items: flex-start;
+    }
+
+    body[data-modal-variant="switch"] #modalTitle {
+        font-size: 17px;
+        line-height: 1.35;
+        max-width: 84%;
+        padding-right: 8px;
+    }
+
+    body[data-modal-variant="switch"] .switch-list {
+        padding: 0;
+        gap: 7px;
+    }
+
+    body[data-modal-variant="switch"] .switch-status-inline {
+        padding: 2px 0 4px;
+    }
+}

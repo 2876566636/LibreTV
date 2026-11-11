@@ -16,9 +16,9 @@
     var zIndex = isSwitch ? 'z-[10000]' : 'z-40';
 
     var template = `
-<div id="modal" class="fixed inset-0 ${backdrop} hidden flex items-center justify-center transition-opacity duration-300 ${zIndex}">
-    <div class="bg-[#111] p-8 rounded-lg w-11/12 max-w-4xl border border-[#333] max-h-[90vh] flex flex-col">
-        <div class="flex justify-between items-center mb-6 flex-none">
+<div id="modal" class="fixed inset-0 ${backdrop} hidden flex items-center justify-center transition-opacity duration-300 ${zIndex}" data-modal-variant="${variant}">
+    <div class="modal-panel bg-[#111] p-8 rounded-lg w-11/12 max-w-4xl border border-[#333] max-h-[90vh] flex flex-col">
+        <div class="modal-head flex justify-between items-center mb-6 flex-none">
             <h2 id="modalTitle" class="text-2xl font-bold gradient-text break-words pr-4 max-w-[80%]"></h2>
             <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl transition-colors flex-shrink-0">&times;</button>
         </div>
