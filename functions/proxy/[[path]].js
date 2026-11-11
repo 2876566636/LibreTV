@@ -116,17 +116,6 @@ export async function onRequest(context) {
         return true;
     }
 
-    // 验证鉴权（主函数调用）
-    if (!validateAuth(request, env)) {
-        return new Response('Unauthorized', { 
-            status: 401,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-                'Access-Control-Allow-Headers': '*'
-            }
-        });
-    }
 
     // 输出调试日志 (需要设置 DEBUG: true 环境变量)
     function logDebug(message) {
@@ -246,40 +235,88 @@ export async function onRequest(context) {
         return `/proxy/${encodeURIComponent(targetUrl)}`;
     }
 
-    // 获取远程内容及其类型
-    async function fetchContentWithType(targetUrl) {
+    // 请求目标地址，返回原始 Response（不预先读取 body）
+    // 关键：图片/视频等二进制内容一旦被 response.text() 读取就会损坏，
+    // 所以这里只取响应头，body 由调用方决定是透传还是按文本解析。
+    async function fetchTarget(targetUrl) {
         const headers = new Headers({
             'User-Agent': getRandomUserAgent(),
             'Accept': '*/*',
-            // 尝试传递一些原始请求的头信息
             'Accept-Language': request.headers.get('Accept-Language') || 'zh-CN,zh;q=0.9,en;q=0.8',
-            // 尝试设置 Referer 为目标网站的域名，或者传递原始 Referer
-            'Referer': request.headers.get('Referer') || new URL(targetUrl).origin
+            'Referer': getRefererFor(targetUrl)
         });
 
         try {
-            // 直接请求目标 URL
-            logDebug(`开始直接请求: ${targetUrl}`);
-            // Cloudflare Functions 的 fetch 默认支持重定向
-            const response = await fetch(targetUrl, { headers, redirect: 'follow' });
+            logDebug(`开始请求: ${targetUrl}`);
+            const response = await fetch(targetUrl, {
+                method: request.method === 'HEAD' ? 'HEAD' : 'GET',
+                headers,
+                redirect: 'follow'
+            });
 
             if (!response.ok) {
-                 const errorBody = await response.text().catch(() => '');
-                 logDebug(`请求失败: ${response.status} ${response.statusText} - ${targetUrl}`);
-                 throw new Error(`HTTP error ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 150)}`);
+                const errorBody = await response.text().catch(() => '');
+                logDebug(`请求失败: ${response.status} ${response.statusText} - ${targetUrl}`);
+                throw new Error(`HTTP error ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 150)}`);
             }
 
-            // 读取响应内容为文本
-            const content = await response.text();
             const contentType = response.headers.get('Content-Type') || '';
-            logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}, 内容长度: ${content.length}`);
-            return { content, contentType, responseHeaders: response.headers }; // 同时返回原始响应头
-
+            logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}`);
+            return { response, contentType };
         } catch (error) {
-             logDebug(`请求彻底失败: ${targetUrl}: ${error.message}`);
-            // 抛出更详细的错误
+            logDebug(`请求彻底失败: ${targetUrl}: ${error.message}`);
             throw new Error(`请求目标URL失败 ${targetUrl}: ${error.message}`);
         }
+    }
+
+    // 按目标域名给出合适的 Referer：豆瓣图床直接用站点根会 403
+    function getRefererFor(targetUrl) {
+        try {
+            const host = new URL(targetUrl).hostname;
+            if (/(^|\.)doubanio\.com$/i.test(host) || /(^|\.)douban\.com$/i.test(host)) {
+                return 'https://movie.douban.com/';
+            }
+            return new URL(targetUrl).origin + '/';
+        } catch (e) {
+            return '*';
+        }
+    }
+
+    // 判断内容是否应按文本处理（只有文本才需要解析/重写 M3U8）
+    function isTextLikeContent(contentType, targetUrl) {
+        const type = String(contentType || '').toLowerCase();
+        if (!type) {
+            return /\.(m3u8|json|xml|txt)(\?|$)/i.test(targetUrl);
+        }
+        if (/^image\//.test(type) || /^video\//.test(type) || /^audio\//.test(type)) return false;
+        if (type.indexOf('mpegurl') !== -1 || type.indexOf('m3u') !== -1) return true;
+        return /^text\//.test(type) || type.indexOf('json') !== -1 ||
+            type.indexOf('xml') !== -1 || type.indexOf('javascript') !== -1;
+    }
+
+    // 二进制 / 媒体内容：把上游 body 原样透传
+    // 注意不能复制 content-length / content-encoding / transfer-encoding：
+    // fetch 已解压过响应，原头的长度与编码信息与当前 body 不匹配
+    function proxyPassthrough(upstream, contentType) {
+        const headers = new Headers();
+        if (contentType) headers.set('Content-Type', contentType);
+
+        const cacheControl = upstream.headers.get('Cache-Control');
+        headers.set('Cache-Control', cacheControl && cacheControl.trim() ? cacheControl : `public, max-age=${CACHE_TTL}`);
+
+        ['ETag', 'Last-Modified', 'Content-Language'].forEach(function (name) {
+            const value = upstream.headers.get(name);
+            if (value) headers.set(name, value);
+        });
+
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
+        headers.set('Access-Control-Allow-Headers', '*');
+
+        return new Response(request.method === 'HEAD' ? null : upstream.body, {
+            status: 200,
+            headers: headers
+        });
     }
 
     // 判断是否是 M3U8 内容
@@ -456,7 +493,8 @@ export async function onRequest(context) {
         }
 
         logDebug(`选择的子列表 (带宽: ${highestBandwidth}): ${bestVariantUrl}`);
-        const { content: variantContent, contentType: variantContentType } = await fetchContentWithType(bestVariantUrl);
+        const { response: variantResponse, contentType: variantContentType } = await fetchTarget(bestVariantUrl);
+        const variantContent = await variantResponse.text();
 
         if (!isM3u8Content(variantContent, variantContentType)) {
             logDebug(`获取到的子列表 ${bestVariantUrl} 不是 M3U8 内容 (类型: ${variantContentType})。可能直接是媒体文件，返回原始内容。`);
@@ -520,6 +558,10 @@ export async function onRequest(context) {
                     let headers = {};
                     try { headers = JSON.parse(cachedData.headers); } catch(e){} // 解析头部
                     const contentType = headers['content-type'] || headers['Content-Type'] || '';
+                    // 旧版本把二进制也当文本缓存过（内容是乱码），这类缓存直接跳过
+                    if (!isTextLikeContent(contentType, targetUrl)) {
+                        throw new Error('缓存内容不是文本类型，忽略');
+                    }
 
                     if (isM3u8Content(content, contentType)) {
                         logDebug(`缓存内容是 M3U8，重新处理: ${targetUrl}`);
@@ -527,6 +569,10 @@ export async function onRequest(context) {
                         return createM3u8Response(processedM3u8);
                     } else {
                         logDebug(`从缓存返回非 M3U8 内容: ${targetUrl}`);
+                        // 缓存里是解压后的文本，原头的长度/编码信息已经不匹配，先清掉
+                        ['content-encoding', 'content-length', 'transfer-encoding'].forEach(function (name) {
+                            delete headers[name];
+                        });
                         return createResponse(content, 200, new Headers(headers));
                     }
                 } else {
@@ -539,7 +585,16 @@ export async function onRequest(context) {
         }
 
         // --- 实际请求 ---
-        const { content, contentType, responseHeaders } = await fetchContentWithType(targetUrl);
+        const { response: upstream, contentType } = await fetchTarget(targetUrl);
+
+        // 图片 / 视频 / 音频 / 其它二进制：直接透传上游 body，不能按文本读取
+        if (!isTextLikeContent(contentType, targetUrl)) {
+            logDebug(`二进制内容直接透传: ${targetUrl} (${contentType || '未知类型'})`);
+            return proxyPassthrough(upstream, contentType);
+        }
+
+        const content = await upstream.text();
+        const responseHeaders = upstream.headers;
 
         // --- 写入缓存 (KV) ---
         if (kvNamespace) {
@@ -564,6 +619,10 @@ export async function onRequest(context) {
         } else {
             logDebug(`内容不是 M3U8 (类型: ${contentType})，直接返回: ${targetUrl}`);
             const finalHeaders = new Headers(responseHeaders);
+            // 文本已由 fetch 解压，原头的长度/编码信息与 body 不一致，必须去掉
+            finalHeaders.delete('content-encoding');
+            finalHeaders.delete('content-length');
+            finalHeaders.delete('transfer-encoding');
             finalHeaders.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
             // 添加 CORS 头，确保非 M3U8 内容也能跨域访问（例如图片、字幕文件等）
             finalHeaders.set("Access-Control-Allow-Origin", "*");
