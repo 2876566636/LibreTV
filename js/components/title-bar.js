@@ -10,7 +10,9 @@
  *
  * 首页搜索框保留原有 id（searchInput / clearSearchInput / recentSearches），
  * 因此 app.js / ui.js / index-page.js 的事件与搜索流程完全不用改。
- * 播放页搜索框回车后跳回首页 /?s=关键词，由 index-page.js 自动执行搜索。
+ * 播放页搜索框 id 为 titlebarSearchInput，同样带 #recentSearches 浮层；
+ * 回车或点搜索跳回首页 /?s=关键词，由 index-page.js 自动执行搜索，
+ * 浮层的绑定与渲染在 ui.js 里对两个输入框都做了兼容。
  */
 (function () {
     'use strict';
@@ -47,6 +49,7 @@
             <input type="text" id="titlebarSearchInput" class="search-bar-input" placeholder="搜索视频，回车回首页搜索" autocomplete="off" aria-label="视频搜索框" onkeydown="if(event.key==='Enter') titlebarSearch()">
             <button type="button" class="search-bar-btn search-bar-btn-search" onclick="titlebarSearch()" aria-label="搜索" title="搜索">` + searchIcon + `</button>
         </div>
+        <div id="recentSearches" class="search-history-popover hidden" aria-label="最近搜索记录"></div>
     </div>
     <a href="#" id="goBack" onclick="goBack(event)" class="titlebar-icon-btn" aria-label="返回上一页" title="返回上一页">` + backIcon + `</a>
 </header>`;

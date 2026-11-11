@@ -228,7 +228,8 @@ function saveSearchHistory(query) {
 // ---------- 最近搜索浮层 ----------
 // 浮层只在搜索框聚焦/点击时出现，点击外部、Esc、回车搜索或点搜索按钮时收起。
 function setupSearchHistoryPopover() {
-    const input = document.getElementById('searchInput');
+    // 首页输入框是 #searchInput，播放页顶栏是 #titlebarSearchInput
+    const input = document.getElementById('searchInput') || document.getElementById('titlebarSearchInput');
     const panel = document.getElementById('recentSearches');
     if (!input || !panel || panel.dataset.bound === '1') return;
     panel.dataset.bound = '1';
@@ -318,11 +319,16 @@ function renderSearchHistory() {
             row.title = `搜索于: ${new Date(item.timestamp).toLocaleString()}`;
         }
 
+        // 首页：填入搜索框后直接搜；播放页没有搜索逻辑，跳回首页用 ?s= 搜索
         const activate = function () {
-            const input = document.getElementById('searchInput');
-            if (input) input.value = item.text;
             hideSearchHistory();
-            search();
+            const input = document.getElementById('searchInput');
+            if (input && typeof search === 'function') {
+                input.value = item.text;
+                search();
+                return;
+            }
+            window.location.href = '/?s=' + encodeURIComponent(item.text);
         };
         row.onclick = activate;
         row.onkeydown = function (e) {
@@ -877,6 +883,11 @@ toggleSettings = function(e) {
 
 // 点击外部关闭历史面板
 document.addEventListener('DOMContentLoaded', function() {
+    // 首页的搜索历史由 app.js 初始化；播放页没有 app.js，在这里补一次渲染与绑定
+    if (!document.getElementById('searchInput')) {
+        renderSearchHistory();
+    }
+
     document.addEventListener('click', function(e) {
         const historyPanel = document.getElementById('historyPanel');
         const historyButton = document.querySelector('button[onclick="toggleHistory(event)"]');
