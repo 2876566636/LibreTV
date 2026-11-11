@@ -244,6 +244,9 @@
         window.__ENV__.PASSWORD = "{{PASSWORD}}";
     </script>
 
+    <!-- EdgeOne 等无法改写 HTML 的平台：由边缘函数下发真实密码哈希（其它平台 404 不影响） -->
+    <script src="/api/env" defer onerror="void 0"></script>
+
     <!-- 版本检测脚本 -->
     <script src="js/version.js?v=20261111-3"></script>
 
