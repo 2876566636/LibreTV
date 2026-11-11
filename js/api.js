@@ -148,23 +148,29 @@ async function handleApiRequest(url) {
                 
                 // 提取播放地址
                 let episodes = [];
-                
+
                 if (videoDetail.vod_play_url) {
                     // 分割不同播放源
                     const playSources = videoDetail.vod_play_url.split('$$$');
-                    
-                    // 提取第一个播放源的集数（通常为主要源）
-                    if (playSources.length > 0) {
-                        const mainSource = playSources[0];
-                        const episodeList = mainSource.split('#');
-                        
-                        // 从每个集数中提取URL
-                        episodes = episodeList.map(ep => {
-                            const parts = ep.split('$');
-                            // 返回URL部分(通常是第二部分，如果有的话)
-                            return parts.length > 1 ? parts[1] : '';
-                        }).filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
+                    // 源名称与播放源一一对应，如 hnyun$$$hnm3u8
+                    const playFroms = String(videoDetail.vod_play_from || '').split('$$$');
+
+                    // 优先选名字里带 m3u8 的播放源：默认的 hnyun 源给的是 /play/xxx 这种播放页 HTML，
+                    // 只有 hnm3u8 源才是真正的 index.m3u8 直链。都没有时退回第一组。
+                    let sourceIndex = playFroms.findIndex(from => String(from).toLowerCase().includes('m3u8'));
+                    if (sourceIndex < 0 || sourceIndex >= playSources.length || !playSources[sourceIndex]) {
+                        sourceIndex = 0;
                     }
+
+                    const mainSource = playSources[sourceIndex];
+                    const episodeList = mainSource.split('#');
+
+                    // 从每个集数中提取URL
+                    episodes = episodeList.map(ep => {
+                        const parts = ep.split('$');
+                        // 返回URL部分(通常是第二部分，如果有的话)
+                        return parts.length > 1 ? parts[1] : '';
+                    }).filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
                 }
                 
                 // 如果没有找到播放地址，尝试使用正则表达式查找m3u8链接
@@ -277,16 +283,21 @@ async function handleCustomApiSpecialDetail(id, customApi) {
     }
 }
 
-// 从 vod_play_url 中解析第一组播放地址
-function parsePlayUrl(playUrl) {
+// 从 vod_play_url 中解析播放地址：优先取名称含 m3u8 的播放源（直链），否则取第一组
+function parsePlayUrl(playUrl, playFrom) {
     const episodes = [];
     if (!playUrl) return episodes;
 
-    // 分割不同播放源，取第一个（通常为主要源）
     const playSources = String(playUrl).split('$$$');
     if (playSources.length === 0) return episodes;
 
-    playSources[0].split('#').forEach(ep => {
+    const playFroms = String(playFrom || '').split('$$$');
+    let sourceIndex = playFroms.findIndex(from => String(from).toLowerCase().includes('m3u8'));
+    if (sourceIndex < 0 || sourceIndex >= playSources.length || !playSources[sourceIndex]) {
+        sourceIndex = 0;
+    }
+
+    playSources[sourceIndex].split('#').forEach(ep => {
         const parts = ep.split('$');
         const url = parts.length > 1 ? parts[1] : '';
         if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
@@ -325,7 +336,7 @@ async function handleSpecialSourceDetail(id, sourceCode) {
             if (apiResponse.ok) {
                 const apiData = await apiResponse.json();
                 const videoDetail = apiData && apiData.list && apiData.list[0];
-                const episodes = videoDetail ? parsePlayUrl(videoDetail.vod_play_url) : [];
+                const episodes = videoDetail ? parsePlayUrl(videoDetail.vod_play_url, videoDetail.vod_play_from) : [];
 
                 if (episodes.length > 0) {
                     return JSON.stringify({

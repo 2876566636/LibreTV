@@ -423,30 +423,56 @@ function showShortcutHint(text, direction) {
     }, 2000);
 }
 
-// 采集站有时返回的不是 m3u8/mp4，而是带播放器的「分享页」HTML，
-// 真实地址藏在页面里的 `const url = "..."`（可能是相对路径）。直接把 HTML
-// 交给 hls.js 会解析失败并一直停在「加载中」，这里先经本地 /proxy/ 取出页面再解析。
+// 采集站有时返回的不是 m3u8/mp4，而是带播放器的「播放页 / 分享页」HTML，
+// 真实地址藏在页面脚本里，例如：
+//   const url = "/20261108/xxx/index.m3u8?sign=..."
+//   const vid = 'https://hn.bfvvs.com/play/e73nvMre/index.m3u8';
+// 直接把 HTML 交给 hls.js 会解析失败并一直停在「加载中」，这里先经本地 /proxy/ 取页面再解析。
+// 判断依据只看「是不是明确的媒体文件」，不是就去试探一下页面——比写死 /share/ 这类路径可靠。
+const PAGE_VIDEO_PATTERNS = [
+    /(?:const|let|var)\s+(?:url|vid|videoUrl|videoSrc|src|playUrl)\s*=\s*["']([^"']+)["']/i,
+    /["']([^"']+\.m3u8[^"']*)["']/i
+];
+
 async function resolvePlayableUrl(rawUrl) {
     if (!rawUrl) return rawUrl;
     // 明确的媒体文件无需解析
     if (/\.(m3u8|mp4|m4v|webm|mkv|avi|mov|flv|f4v|3gp|mp3|m4a|aac)(\?|#|$)/i.test(rawUrl)) return rawUrl;
-    // 只处理 /share/ 这类分享页，避免对普通未知地址多发一次请求
-    if (rawUrl.indexOf('/share/') === -1) return rawUrl;
 
     let target = PROXY_URL + encodeURIComponent(rawUrl);
     if (window.ProxyAuth && typeof window.ProxyAuth.addAuthToProxyUrl === 'function') {
         target = await window.ProxyAuth.addAuthToProxyUrl(target);
     }
-    const response = await fetch(target);
-    if (!response.ok) return rawUrl;
-    const html = await response.text();
-    const match = html.match(/(?:const|let|var)\s+url\s*=\s*["']([^"']+)["']/i);
-    if (!match || !match[1]) return rawUrl;
+
+    let html = '';
     try {
-        return new URL(match[1], rawUrl).toString();
+        const response = await fetch(target);
+        if (!response.ok) return rawUrl;
+        // 只处理 HTML，JSON 之类的响应不做解析
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (contentType && contentType.indexOf('text/html') === -1 && contentType.indexOf('text/plain') === -1) {
+            return rawUrl;
+        }
+        html = await response.text();
     } catch (e) {
         return rawUrl;
     }
+    if (!html || html.length > 600000) return rawUrl;
+
+    for (let i = 0; i < PAGE_VIDEO_PATTERNS.length; i++) {
+        const match = html.match(PAGE_VIDEO_PATTERNS[i]);
+        if (!match || !match[1]) continue;
+        try {
+            const resolved = new URL(match[1], rawUrl).toString();
+            // 解析结果必须是媒体文件，避免把页面里的其它 js/css 地址当成视频
+            if (/\.(m3u8|mp4|m4v|webm|mkv|flv|mp3|m4a|aac)(\?|#|$)/i.test(resolved)) {
+                return resolved;
+            }
+        } catch (e) {
+            // 继续尝试下一个规则
+        }
+    }
+    return rawUrl;
 }
 
 // 初始化播放器
