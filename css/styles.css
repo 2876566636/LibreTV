@@ -918,7 +918,7 @@ body {
     display: flex;
     flex-direction: column;
     width: 100%;
-    max-width: 440px;
+    max-width: 380px;
     background: #111;
     overflow: hidden;
     overscroll-behavior: contain;
@@ -1835,8 +1835,9 @@ body.settings-dialog-open {
 
 @media (max-width: 640px) {
     .settings-panel {
-        /* 比旧版 320px 略宽，给一级 + 二级浮窗留出并排空间 */
-        width: 360px;
+        /* 320px 是「一级菜单 148 + 间距 12 + 二级浮层 124 + 两侧留白」的下限，
+           再窄「添加」的二级菜单会被面板的 overflow 裁掉 */
+        width: 320px;
         max-width: 100%;
         height: 100dvh;
         max-height: 100dvh;

@@ -1,0 +1,143 @@
+/* 全局 titlebar（首页 / 播放页共用，由 js/components/title-bar.js 注入） */
+:root {
+    --titlebar-h: 56px;
+}
+
+@media (max-width: 640px) {
+    :root { --titlebar-h: 52px; }
+}
+
+/* 首页原本没有顶部占位，播放页 player.css 已有 padding-top: var(--player-header-h) */
+body[data-titlebar-variant="home"] { padding-top: var(--titlebar-h); }
+
+.global-titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--titlebar-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    /* 与页面背景同色，只靠边框和阴影分层 */
+    background: var(--page-gradient-start, #0f1622);
+    border-bottom: 1px solid rgba(0, 204, 255, 0.16);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+/* 首页不能盖住设置面板(z-40)/密码弹窗(z-65)；播放页沿用原 header 的层级 */
+.global-titlebar[data-variant="home"] { z-index: 30; }
+.global-titlebar[data-variant="player"] { z-index: 9000; }
+
+.titlebar-icon-btn {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #cfe3f5;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(0, 204, 255, 0.16);
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.titlebar-icon-btn svg { width: 19px; height: 19px; }
+
+.titlebar-icon-btn:hover {
+    color: #fff;
+    background: rgba(0, 204, 255, 0.12);
+    border-color: rgba(0, 204, 255, 0.45);
+    box-shadow: 0 0 12px rgba(0, 204, 255, 0.18);
+}
+
+.titlebar-icon-btn:focus-visible { outline: 2px solid #00ccff; outline-offset: 2px; }
+
+.titlebar-search-wrap {
+    flex: 1;
+    min-width: 0;
+    max-width: 720px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* 复用首页 .search-bar 的结构，配色改成蓝黑玻璃 */
+.global-titlebar .search-bar {
+    height: 40px;
+    margin-bottom: 0;
+    border-radius: 10px;
+    background: rgba(9, 14, 23, 0.72);
+    border: 1px solid rgba(0, 204, 255, 0.18);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.global-titlebar .search-bar:focus-within {
+    border-color: #3f7183;
+    box-shadow: 0 0 0 3px rgba(0, 204, 255, 0.16), inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.global-titlebar .search-bar-input { font-size: 14px; }
+.global-titlebar .search-bar-input::placeholder { color: #7c8ba1; }
+.global-titlebar .search-bar-btn { width: 40px; }
+.global-titlebar .search-bar-btn svg { width: 18px; height: 18px; }
+
+/* 搜索按钮：styles.css 里的纯白高亮块在深色顶栏里太扎眼，改成同色系的青色强调，
+   保留右侧竖分隔线与 hover 反馈，仍是搜索框的视觉落点 */
+.global-titlebar .search-bar-btn {
+    color: #a9dcec;
+    background: rgba(0, 204, 255, 0.1);
+    border-left: 1px solid rgba(0, 204, 255, 0.14);
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.global-titlebar .search-bar-btn:hover {
+    color: #fff;
+    background: rgba(0, 204, 255, 0.2);
+}
+
+.global-titlebar .search-bar-btn:active { background: rgba(0, 204, 255, 0.28); }
+
+.global-titlebar .search-bar-btn:focus-visible {
+    outline: 2px solid #00ccff;
+    outline-offset: -3px;
+}
+
+/* 最近搜索浮层挂在搜索框容器下（不能放进 .search-bar，它有 overflow:hidden），与顶栏同色系 */
+.titlebar-search-wrap .search-history-popover {
+    top: calc(100% + 8px);
+    background: rgba(17, 25, 37, 0.98);
+    border-color: rgba(0, 204, 255, 0.18);
+}
+
+.titlebar-search-wrap .search-history-header span { color: #8599b2; }
+.titlebar-search-wrap .search-history-row { color: #e6f2ff; }
+
+/* 播放页视频标题移到播放器下方。
+   播放器外层 .player-container 是 max-width:1000px 居中，而标题是 <main> 的直接子元素，
+   若不跟它对齐会贴到 <main> 左边缘（宽屏下看起来"错位"），所以这里用同一套宽度 + 居中 */
+.player-title-below {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto 12px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #e6f2ff;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+    :root { --titlebar-h: 52px; }
+    .global-titlebar { padding: 0 10px; gap: 8px; }
+    .titlebar-icon-btn { width: 34px; height: 34px; border-radius: 9px; }
+    .global-titlebar .search-bar { height: 36px; }
+    .global-titlebar .search-bar-input { font-size: 16px; }
+    .player-title-below { font-size: 15px; }
+}

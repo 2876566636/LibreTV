@@ -13,7 +13,8 @@
 
     <script src="libs/tailwindcss.min.js"></script>
     <script src="js/version-check.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261110-30">
+    <link rel="stylesheet" href="css/styles.css?v=20261111-2">
+    <link rel="stylesheet" href="css/components/titlebar.css?v=20261111-3">
     <link rel="stylesheet" href="css/components/modal.css?v=20261110-1">
     <link rel="stylesheet" href="css/player.css?v=20261110-2">
     
@@ -21,25 +22,9 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 </head>
-<body data-modal-variant="switch">
-    <header class="player-header-fixed">
-        <button id="homeButton" type="button" class="player-nav-btn" aria-label="返回首页" title="返回首页">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10.5 12 3l9 7.5"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.5 9.6V19a1.5 1.5 0 0 0 1.5 1.5h3.25V15h3.5v5.5H17A1.5 1.5 0 0 0 18.5 19V9.6"></path>
-            </svg>
-            <span class="player-nav-text">首页</span>
-        </button>
-
-        <h2 id="videoTitle" class="player-title custom-title-scroll"></h2>
-
-        <a href="#" id="goBack" onclick="goBack(event)" class="player-nav-btn" aria-label="返回上一页" title="返回上一页">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-            </svg>
-            <span class="player-nav-text">返回</span>
-        </a>
-    </header>
+<body data-modal-variant="switch" data-titlebar-variant="player">
+    <!-- 全局 titlebar 挂载点 -->
+    <div id="titlebar-root"></div>
 
     <!-- 密码验证弹窗 -->
     <div id="passwordModal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[65] transition-opacity duration-300">
@@ -80,6 +65,8 @@
                 </div>
             </div>
         </div>
+
+        <h2 id="videoTitle" class="player-title-below custom-title-scroll"></h2>
 
         <!-- 源信息 -->
         <div class="player-container flex justify-between py-2 px-4 mb-2 bg-gray-700" id="resourceInfoBarContainer">
@@ -218,8 +205,9 @@
 
     <script src="js/api-sites.js?v=20261110-8"></script>
     <script src="js/config.js?v=20261110-10"></script>
-    <script src="js/components/component-registry.js?v=20261110-2"></script>
+    <script src="js/components/component-registry.js?v=20261110-3"></script>
     <script src="js/components/modal-shell.js?v=20261110-1"></script>
+    <script src="js/components/title-bar.js?v=20261111-1"></script>
     <script>window.Components.mountAll();</script>
     <script src="js/overlay-guard.js?v=20261110-2"></script>
     <script src="js/proxy-auth.js"></script>

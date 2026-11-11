@@ -32,9 +32,28 @@ document.addEventListener('DOMContentLoaded', function () {
         window.initSettingsPanel();
     }
 
+    // 大 logo 只在首页显示，进入搜索结果后隐藏
+    initHeroVisibility();
+
     // 设置事件监听器
     setupEventListeners();
 });
+
+// 首页大 logo / 标语只在首页（没有搜索结果）时显示。
+// 以 #resultsArea 的 hidden 类为唯一信号，避免搜索结果的多处显隐逻辑各改一遍。
+function initHeroVisibility() {
+    const resultsArea = document.getElementById('resultsArea');
+    const hero = document.getElementById('heroHeader');
+    if (!resultsArea || !hero) return;
+
+    const sync = function () {
+        const searching = !resultsArea.classList.contains('hidden');
+        hero.style.display = searching ? 'none' : '';
+    };
+
+    new MutationObserver(sync).observe(resultsArea, { attributes: true, attributeFilter: ['class'] });
+    sync();
+}
 
 // 设置事件监听器
 function setupEventListeners() {

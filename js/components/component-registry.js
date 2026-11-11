@@ -14,7 +14,7 @@
 
     // Tailwind Play CDN 依赖 MutationObserver 重新扫描动态 DOM；这里给 hidden 一个
     // 兜底，避免首帧样式未生成时弹窗/菜单直接展开。
-    var BASE_STYLE = '#component-root .hidden, #modal-root .hidden { display: none; }';
+    var BASE_STYLE = '#component-root .hidden, #modal-root .hidden, #titlebar-root .hidden { display: none; }';
 
     function find(name) {
         for (var i = 0; i < registry.length; i++) {
