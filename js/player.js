@@ -725,6 +725,49 @@ function initPlayer(videoUrl) {
         }
     });
 
+    // 全屏后页面顶栏（首页 / 返回）被播放器盖住，在画面左上角叠一个返回按钮。
+    // 只在全屏时显示（见 player.css 的 .art-fullscreen / .art-fullscreen-web 规则），
+    // 非全屏仍用页面顶栏的返回，不重复出现。
+    // 点击行为：退出全屏、回到竖屏播放页（不是直接跳回上一页）。
+    (function setupFullscreenBackButton() {
+        const mount = document.querySelector('#player .art-video-player') || document.getElementById('player');
+        if (!mount) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'player-fs-back';
+        btn.setAttribute('aria-label', '返回');
+        btn.title = '返回';
+        // 与 title-bar.js 里播放页顶栏的返回 icon 完全一致
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>';
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // 全屏状态下「返回」只退出全屏，回到竖屏播放页；
+            // 页面顶栏的返回按钮才是真正的回上一页（全屏时它被播放器盖住）。
+            if (art) {
+                if (art.fullscreenWeb) {
+                    art.fullscreenWeb = false;
+                    return;
+                }
+                if (art.fullscreen) {
+                    art.fullscreen = false;
+                    return;
+                }
+            }
+            if (typeof window.goBack === 'function') {
+                window.goBack();
+            } else {
+                window.history.back();
+            }
+        });
+        // 触摸时不要触发播放器的单击暂停
+        btn.addEventListener('touchstart', function (e) { e.stopPropagation(); }, { passive: true });
+
+        mount.appendChild(btn);
+    })();
+
     // artplayer 没有 'fullscreenWeb:enter', 'fullscreenWeb:exit' 等事件
     // 所以原控制栏隐藏代码并没有起作用
     // 实际起作用的是 artplayer 默认行为，它支持自动隐藏工具栏
