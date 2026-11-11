@@ -1,6 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "echo skip-install",
-  "outputDirectory": "./",
   "nodeVersion": "20.18.0"
 }

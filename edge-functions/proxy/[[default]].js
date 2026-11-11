@@ -14,7 +14,7 @@ const CACHE_TTL = 86400; // 秒
 const MAX_RECURSION = 5;
 const DEFAULT_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-export default async function onRequest(context) {
+export async function onRequest(context) {
     const { request, env } = context;
     const url = new URL(request.url);
 
@@ -348,3 +348,5 @@ async function processMasterPlaylist(url, content, depth) {
 
     return processM3u8(bestVariantUrl, variantContent, depth + 1);
 }
+
+export default onRequest;

@@ -9,7 +9,7 @@
  * DOMContentLoaded 之前把 window.__ENV__.PASSWORD 覆盖成真实哈希。
  */
 
-export default async function onRequest(context) {
+export async function onRequest(context) {
     const env = (context && context.env) || {};
     const password = env.PASSWORD || '';
 
@@ -34,3 +34,5 @@ export default async function onRequest(context) {
         }
     });
 }
+
+export default onRequest;
