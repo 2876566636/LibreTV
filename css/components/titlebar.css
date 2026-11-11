@@ -44,17 +44,33 @@ body[data-titlebar-variant="home"] { padding-top: var(--titlebar-h); }
     border-radius: 10px;
     cursor: pointer;
     text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .titlebar-icon-btn svg { width: 19px; height: 19px; }
 
-.titlebar-icon-btn:hover {
-    color: #fff;
-    background: rgba(0, 204, 255, 0.12);
-    border-color: rgba(0, 204, 255, 0.45);
-    box-shadow: 0 0 12px rgba(0, 204, 255, 0.18);
+/* 鼠标设备才有 hover。触屏上点完按钮后 :hover 会一直"粘"在元素上（手机上表现为
+   home icon 常亮），所以 hover 只在支持悬停的设备生效，触屏改由 :active 给即时反馈 */
+@media (hover: hover) and (pointer: fine) {
+    .titlebar-icon-btn:hover {
+        color: #fff;
+        background: rgba(0, 204, 255, 0.12);
+        border-color: rgba(0, 204, 255, 0.45);
+        box-shadow: 0 0 12px rgba(0, 204, 255, 0.18);
+    }
 }
+
+@media (hover: none) {
+    .titlebar-icon-btn:active {
+        color: #fff;
+        background: rgba(0, 204, 255, 0.18);
+        border-color: rgba(0, 204, 255, 0.45);
+    }
+}
+
+/* 触屏点按后按钮仍会拿到 :focus，去掉默认焦点环（键盘用户走 :focus-visible） */
+.titlebar-icon-btn:focus { outline: none; }
 
 .titlebar-icon-btn:focus-visible { outline: 2px solid #00ccff; outline-offset: 2px; }
 
@@ -95,12 +111,24 @@ body[data-titlebar-variant="home"] { padding-top: var(--titlebar-h); }
     transition: background 0.18s ease, color 0.18s ease;
 }
 
-.global-titlebar .search-bar-btn:hover {
-    color: #fff;
-    background: rgba(0, 204, 255, 0.2);
+@media (hover: hover) and (pointer: fine) {
+    .global-titlebar .search-bar-btn:hover {
+        color: #fff;
+        background: rgba(0, 204, 255, 0.2);
+    }
 }
 
 .global-titlebar .search-bar-btn:active { background: rgba(0, 204, 255, 0.28); }
+
+/* 触屏上 :hover 会粘住，styles.css 里 .search-bar-btn:hover 的白色底会一直显示，这里压回常态 */
+@media (hover: none) {
+    .global-titlebar .search-bar-btn:hover {
+        color: #a9dcec;
+        background: rgba(0, 204, 255, 0.1);
+    }
+}
+
+.global-titlebar .search-bar-btn:focus { outline: none; }
 
 .global-titlebar .search-bar-btn:focus-visible {
     outline: 2px solid #00ccff;

@@ -9,7 +9,7 @@
  * - selectedAPIs              启用的视频源 id（内置为 key，自定义为 custom_N）
  * - mobileGestureEnabled      移动端手势开关
  * - longPressSpeedRate        长按倍速倍率
- * - playbackBufferSeconds     播放缓冲秒数（默认 30）
+ * - playbackBufferSeconds     播放缓冲秒数（默认 60）
  */
 (function () {
     'use strict';
@@ -21,6 +21,7 @@
     const BUFFER_SECONDS_KEY = 'playbackBufferSeconds';
     const BUFFER_SECONDS_MIN = 1;
     const BUFFER_SECONDS_MAX = 300;
+    const DEFAULT_BUFFER_SECONDS = 60;
     const DEFAULT_LONG_PRESS_RATE = 3;
 
     const sourceHealth = new Map();
@@ -1049,7 +1050,7 @@
         return Number.isFinite(value) && value >= 1 && value <= 5 ? value : DEFAULT_LONG_PRESS_RATE;
     }
 
-    // 缓冲秒数：留空或非法时由播放器使用默认 30 秒
+    // 缓冲秒数：留空或非法时由播放器使用默认 60 秒
     function getBufferSeconds() {
         const value = parseInt(localStorage.getItem(BUFFER_SECONDS_KEY), 10);
         return Number.isFinite(value) && value >= BUFFER_SECONDS_MIN && value <= BUFFER_SECONDS_MAX ? value : null;
@@ -1068,8 +1069,8 @@
         const desc = document.getElementById('bufferLevelDesc');
         if (desc) {
             desc.textContent = seconds !== null
-                ? `当前预加载 ${seconds} 秒；可填 1–300 秒，留空恢复默认 30 秒，下次打开播放器生效`
-                : '默认预加载 30 秒；可填 1–300 秒，下次打开播放器生效';
+                ? `当前预加载 ${seconds} 秒；可填 1–300 秒，留空恢复默认 ${DEFAULT_BUFFER_SECONDS} 秒，下次打开播放器生效`
+                : `默认预加载 ${DEFAULT_BUFFER_SECONDS} 秒；可填 1–300 秒，下次打开播放器生效`;
         }
     }
 

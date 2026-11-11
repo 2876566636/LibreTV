@@ -122,10 +122,10 @@
                 <div class="settings-row settings-row-stack">
                     <div class="settings-row-text">
                         <div class="settings-row-title">播放缓冲</div>
-                        <p class="settings-row-desc" id="bufferLevelDesc">默认预加载 30 秒；可填 1–300 秒，下次打开播放器生效</p>
+                        <p class="settings-row-desc" id="bufferLevelDesc">默认预加载 60 秒；可填 1–300 秒，下次打开播放器生效</p>
                     </div>
                     <div class="settings-buffer-field">
-                        <input id="bufferSecondsInput" class="settings-number-input" type="number" min="1" max="300" step="1" inputmode="numeric" aria-label="缓冲秒数" placeholder="默认 30">
+                        <input id="bufferSecondsInput" class="settings-number-input" type="number" min="1" max="300" step="1" inputmode="numeric" aria-label="缓冲秒数" placeholder="默认 60">
                         <span class="settings-buffer-unit">秒</span>
                     </div>
                 </div>
@@ -258,6 +258,6 @@
 
     window.Components.define('settings', {
         template: template,
-        script: 'js/settings.js?v=20261110-21'
+        script: 'js/settings.js?v=20261111-1'
     });
 })();

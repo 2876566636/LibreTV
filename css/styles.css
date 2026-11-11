@@ -645,56 +645,74 @@ body {
     padding-right: 6px; /* 为滚动条预留空间，确保内容不被挤压 */
 }
 
-/* 历史记录项样式优化 */
+/* 历史记录项：紧凑两行（标题 / 元信息 + 时间），有进度时再加一条细进度条 */
 .history-item {
     background: #1a1a1a;
-    border-radius: 6px; /* 减小圆角 */
+    border-radius: 6px;
     border: 1px solid #333;
     overflow: hidden;
-    transition: all 0.2s ease;
-    padding: 10px 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    padding: 7px 12px;
     position: relative;
-    margin-bottom: 8px; /* 减小底部间距 */
-    width: 100%; /* 确保宽度一致 */
+    margin-bottom: 6px;
+    width: 100%;
 }
 
 .history-item:hover {
-    transform: translateY(-2px);
     border-color: #444;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-/* 添加组悬停效果，使删除按钮在悬停时显示 */
-.history-item .delete-btn {
+/* 删除按钮：鼠标悬停时显现；触屏没有 hover，直接常显 */
+.history-delete {
     opacity: 0;
     transition: opacity 0.2s ease;
 }
 
-.history-item:hover .delete-btn {
+.history-item:hover .history-delete {
     opacity: 1;
 }
 
+@media (hover: none) {
+    .history-delete { opacity: 1; }
+}
+
 .history-info {
-    padding: 0; /* 移除额外的内边距 */
-    min-height: 70px;
+    padding: 0;
+    min-height: 0;
 }
 
 .history-title {
     font-weight: 500;
-    font-size: 0.95rem; /* 减小字体大小 */
-    margin-bottom: 2px; /* 减小底部边距 */
+    font-size: 0.88rem;
+    line-height: 1.35;
+    margin-bottom: 1px;
+    padding-right: 18px; /* 给右上角删除按钮留位，避免长标题压到它 */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.history-meta {
-    color: #bbb;
-    font-size: 0.75rem; /* 减小字体大小 */
+/* 元信息与时间同一行：元信息可省略，时间靠右定宽 */
+.history-sub {
     display: flex;
-    flex-wrap: wrap;
-    margin-bottom: 1px; /* 减小边距 */
+    align-items: center;
+    gap: 8px;
 }
+
+.history-meta {
+    flex: 1;
+    min-width: 0;
+    color: #bbb;
+    font-size: 0.72rem;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow: hidden;
+}
+
+.history-meta > span { white-space: nowrap; }
+.history-meta .history-source { overflow: hidden; text-overflow: ellipsis; }
 
 .history-episode {
     color: #3b82f6;
@@ -705,9 +723,10 @@ body {
 }
 
 .history-time {
-    color: #888;
-    font-size: 0.7rem; /* 减小字体大小 */
-    margin-top: 1px; /* 减小顶部边距 */
+    flex: none;
+    color: #7f8794;
+    font-size: 0.68rem;
+    margin: 0;
 }
 
 .history-separator {
@@ -727,34 +746,21 @@ body {
     object-fit: cover;
 }
 
-.history-info {
-    padding: 10px;
-}
-
-.history-time {
-    color: #888;
-    font-size: 0.8rem;
-    margin-top: 4px;
-}
-
-.history-title {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* 添加播放进度条样式 */
+/* 添加播放进度条样式：进度条与时间文本同一行，避免多占一行高度 */
 .history-progress {
-    margin: 5px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 5px 0 0;
 }
 
 .progress-bar {
+    flex: 1;
     height: 3px;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     overflow: hidden;
-    margin-bottom: 2px;
+    margin-bottom: 0;
 }
 
 .progress-filled {
@@ -764,9 +770,10 @@ body {
 }
 
 .progress-text {
+    flex: none;
     font-size: 10px;
     color: #888;
-    text-align: right;
+    line-height: 1;
 }
 
 /* 添加恢复播放提示样式 */

@@ -530,27 +530,29 @@ function loadViewingHistory() {
         // 为防止XSS，使用encodeURIComponent编码URL
         const safeURL = encodeURIComponent(item.url);
 
-        // 构建历史记录项HTML，添加删除按钮，需要放在position:relative的容器中
+        // 构建历史记录项HTML：标题一行，元信息与时间同一行（有进度时再加一条进度条）
         return `
-            <div class="history-item cursor-pointer relative group" onclick="playFromHistory('${item.url}', '${safeTitle}', ${item.episodeIndex || 0}, ${item.playbackPosition || 0})">
+            <div class="history-item cursor-pointer relative" onclick="playFromHistory('${item.url}', '${safeTitle}', ${item.episodeIndex || 0}, ${item.playbackPosition || 0})">
                 <button onclick="event.stopPropagation(); deleteHistoryItem('${safeURL}')"
-                        class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10"
-                        title="删除记录">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="history-delete absolute right-1 top-1 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10"
+                        title="删除记录" aria-label="删除记录">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
                 <div class="history-info">
                     <div class="history-title">${safeTitle}</div>
-                    <div class="history-meta">
-                        <span class="history-episode">${episodeText}</span>
-                        ${episodeText ? '<span class="history-separator mx-1">·</span>' : ''}
-                        <span class="history-source">${safeSource}</span>
-                        ${episodeInfoHtml ? '<span class="history-separator mx-1">·</span>' : ''}
-                        ${episodeInfoHtml}
+                    <div class="history-sub">
+                        <div class="history-meta">
+                            <span class="history-episode">${episodeText}</span>
+                            ${episodeText ? '<span class="history-separator mx-1">·</span>' : ''}
+                            <span class="history-source">${safeSource}</span>
+                            ${episodeInfoHtml ? '<span class="history-separator mx-1">·</span>' : ''}
+                            ${episodeInfoHtml}
+                        </div>
+                        <div class="history-time">${formatTimestamp(item.timestamp)}</div>
                     </div>
                     ${progressHtml}
-                    <div class="history-time">${formatTimestamp(item.timestamp)}</div>
                 </div>
             </div>
         `;
@@ -723,47 +725,33 @@ async function playFromHistory(url, title, episodeIndex, playbackPosition = 0) {
         }
         localStorage.setItem('lastPageUrl', currentPath);
 
-        // 构造播放器URL
-        let playerUrl;
+        // 构造播放器 URL。历史记录里存的是播放页链接（player.html?url=...），
+        // 取出内层真实流地址；若本身就是流地址则直接用
+        let videoUrl = url;
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (parsed.pathname.endsWith('player.html')) {
+                videoUrl = parsed.searchParams.get('url') || url;
+            }
+        } catch (e) {
+            videoUrl = url;
+        }
+
         const sourceNameForUrl = historyItem ? historyItem.sourceName : (new URLSearchParams(new URL(url, window.location.origin).search)).get('source');
         const sourceCodeForUrl = historyItem ? historyItem.sourceCode || historyItem.sourceName : (new URLSearchParams(new URL(url, window.location.origin).search)).get('source_code');
         const idForUrl = historyItem ? historyItem.vod_id : '';
 
+        const playerParams = new URLSearchParams();
+        playerParams.set('url', videoUrl);
+        playerParams.set('title', title);
+        playerParams.set('index', String(episodeIndex));
+        playerParams.set('position', String(Math.floor(playbackPosition || 0)));
+        playerParams.set('returnUrl', encodeURIComponent(currentPath));
+        if (sourceNameForUrl) playerParams.set('source', sourceNameForUrl);
+        if (sourceCodeForUrl) playerParams.set('source_code', sourceCodeForUrl);
+        if (idForUrl) playerParams.set('id', idForUrl);
 
-        if (url.includes('player.html')) {
-            // console.log('检测到嵌套播放链接，解析真实URL');
-            try {
-                const nestedUrl = new URL(url, window.location.origin);
-                const nestedParams = nestedUrl.searchParams;
-                const realVideoUrl = nestedParams.get('url') || url;
-
-                playerUrl = `player.html?url=${encodeURIComponent(realVideoUrl)}&title=${encodeURIComponent(title)}&index=${episodeIndex}&position=${Math.floor(playbackPosition || 0)}&returnUrl=${encodeURIComponent(currentPath)}`;
-                if (sourceNameForUrl) playerUrl += `&source=${encodeURIComponent(sourceNameForUrl)}`;
-                if (sourceCodeForUrl) playerUrl += `&source_code=${encodeURIComponent(sourceCodeForUrl)}`;
-                if (idForUrl) playerUrl += `&id=${encodeURIComponent(idForUrl)}`;
-
-
-            } catch (e) {
-                // console.error('解析嵌套URL出错:', e);
-                playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&index=${episodeIndex}&position=${Math.floor(playbackPosition || 0)}&returnUrl=${encodeURIComponent(currentPath)}`;
-                if (sourceNameForUrl) playerUrl += `&source=${encodeURIComponent(sourceNameForUrl)}`;
-                if (sourceCodeForUrl) playerUrl += `&source_code=${encodeURIComponent(sourceCodeForUrl)}`;
-                if (idForUrl) playerUrl += `&id=${encodeURIComponent(idForUrl)}`;
-            }
-        } else {
-             // This case should ideally not happen if 'url' is always a player.html link from history
-            // console.warn("Playing from history with a non-player.html URL structure. This might be an issue.");
-            const playUrl = new URL(url, window.location.origin);
-            if (!playUrl.searchParams.has('index') && episodeIndex > 0) {
-                playUrl.searchParams.set('index', episodeIndex);
-            }
-            playUrl.searchParams.set('position', Math.floor(playbackPosition || 0).toString());
-            playUrl.searchParams.set('returnUrl', encodeURIComponent(currentPath));
-            if (sourceNameForUrl) playUrl.searchParams.set('source', sourceNameForUrl);
-            if (sourceCodeForUrl) playUrl.searchParams.set('source_code', sourceCodeForUrl);
-            if (idForUrl) playUrl.searchParams.set('id', idForUrl);
-            playerUrl = playUrl.toString();
-        }
+        const playerUrl = 'player.html?' + playerParams.toString();
 
         showVideoPlayer(playerUrl);
     } catch (e) {

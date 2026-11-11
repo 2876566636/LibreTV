@@ -442,9 +442,11 @@ function showVideoPlayer(url) {
     document.getElementById('resultsArea').classList.add('hidden');
     document.getElementById('doubanArea').classList.add('hidden');
     // 在框架中打开播放页面
+    // 注意：Tailwind 的 fixed 不含 inset，top/left 会退回静态位置——body 有 titlebar 的
+    // padding-top，iframe 就会被顶下去 56px 且底部溢出，所以必须显式 top-0 left-0
     videoPlayerFrame = document.createElement('iframe');
     videoPlayerFrame.id = 'VideoPlayerFrame';
-    videoPlayerFrame.className = 'fixed w-full h-screen z-40';
+    videoPlayerFrame.className = 'fixed top-0 left-0 w-full h-screen z-40';
     videoPlayerFrame.src = url;
     document.body.appendChild(videoPlayerFrame);
     // 将焦点移入iframe

@@ -9,11 +9,11 @@ const longPressSpeedRate = (function () {
     return Number.isFinite(value) && value >= 1 && value <= 5 ? value : 3;
 })();
 
-// 播放缓冲时长（秒），由设置页写入；留空或非法时用默认 30 秒。
+// 播放缓冲时长（秒），由设置页写入；留空或非法时用默认 60 秒。
 // 其它 hls.js 参数按秒数等比推导。
 const playbackBufferProfile = (function () {
     const seconds = parseInt(localStorage.getItem('playbackBufferSeconds'), 10);
-    const value = Number.isFinite(seconds) && seconds >= 1 && seconds <= 300 ? seconds : 30;
+    const value = Number.isFinite(seconds) && seconds >= 1 && seconds <= 300 ? seconds : 60;
     return {
         maxBufferLength: value,
         maxMaxBufferLength: value * 2,
