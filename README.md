@@ -8,7 +8,9 @@
 
 ## 📺 项目简介
 
-LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供来自多个视频源的内容搜索与播放服务。无需注册，即开即用，支持多种设备访问。项目结合了前端技术和后端代理功能，可部署在支持服务端功能的各类网站托管服务上。**项目门户**： [libretv.is-an.org](https://libretv.is-an.org)
+LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供来自多个视频源的内容搜索与播放服务。无需注册，即开即用，支持多种设备访问。项目结合了前端技术和后端代理功能，可部署在支持服务端功能的各类网站托管服务上。
+
+仓库地址：<https://github.com/2876566636/LibreTV>
 
 本项目基于 [bestK/tv](https://github.com/bestK/tv) 进行重构与增强。
 
@@ -19,11 +21,7 @@ LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供
 
 ## 🚀 快速部署
 
-选择以下任一平台，点击一键部署按钮，即可快速创建自己的 LibreTV 实例：
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FLibreSpark%2FLibreTV)  
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/LibreSpark/LibreTV)  
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/LibreSpark/LibreTV)
+本项目是独立仓库（<https://github.com/2876566636/LibreTV>），部署时使用这个仓库地址即可。各平台的具体步骤见下方「详细部署指南」：Vercel、Netlify、Render、Cloudflare Pages、Docker 均可直接使用本仓库内的配置文件。
 
 ## 🚨 重要声明
 
@@ -32,24 +30,18 @@ LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供
 - 如因公开分享导致的任何法律问题，用户需自行承担责任
 - 项目开发者不对用户的使用行为承担任何法律责任
 
-## ⚠️ 同步与升级
+## 🔄 更新说明
 
-Pull Bot 会反复触发无效的 PR 和垃圾邮件，严重干扰项目维护。作者可能会直接拉黑所有 Pull Bot 自动发起的同步请求的仓库所有者。
+本项目是独立仓库，不跟随上游自动同步，也没有内置的同步工作流，按自己的节奏提交即可。
 
-**推荐做法：**
-
-建议在 fork 的仓库中启用本仓库自带的 GitHub Actions 自动同步功能（见 `.github/workflows/sync.yml`）。 
-
-如需手动同步主仓库更新，也可以使用 GitHub 官方的 [Sync fork](https://docs.github.com/cn/github/collaborating-with-issues-and-pull-requests/syncing-a-fork) 功能。
-
-对于更新后可能会出现的错误和异常，在设置中备份配置后，首先清除页面Cookie，然后 Ctrl + F5 刷新页面。再次访问网页检查是否解决问题。
+更新代码后如遇页面异常，先在设置里备份配置，然后清除页面 Cookie，再 `Ctrl + F5` 强制刷新。
 
 
 ## 📋 详细部署指南
 
 ### Cloudflare Pages
 
-1. Fork 或克隆本仓库到您的 GitHub 账户
+1. 将本仓库放到您的 GitHub 账户下（本项目是独立仓库，无需 fork）
 2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)，进入 Pages 服务
 3. 点击"创建项目"，连接您的 GitHub 仓库
 4. 使用以下设置：
@@ -60,7 +52,7 @@ Pull Bot 会反复触发无效的 PR 和垃圾邮件，严重干扰项目维护�
 
 ### Vercel
 
-1. Fork 或克隆本仓库到您的 GitHub/GitLab 账户
+1. 将本仓库放到您的 GitHub/GitLab 账户下（本项目是独立仓库，无需 fork）
 2. 登录 [Vercel](https://vercel.com/)，点击"New Project"
 3. 导入您的仓库，使用默认设置
 4. **⚠️ 重要：在"Settings" > "Environment Variables"中添加 `PASSWORD` 变量（必须设置）**
@@ -104,6 +96,10 @@ docker compose up -d
 项目包含后端代理功能，需要支持服务器端功能的环境：
 
 ```bash
+# 克隆仓库
+git clone git@github.com:2876566636/LibreTV.git
+cd LibreTV
+
 # 首先，通过复制示例来设置 .env 文件（可选）
 cp .env.example .env
 

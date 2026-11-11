@@ -6,6 +6,10 @@
   "description": "免费在线视频搜索与观看平台",
   "author": "bestZwei",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2876566636/LibreTV.git"
+  },
   "scripts": {
     "dev": "nodemon server.mjs",
     "start": "node server.mjs"
