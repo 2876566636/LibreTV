@@ -1,3 +1,19 @@
+// 设置面板的逻辑脚本是点击时才下载的：慢网下这段等待必须给反馈，
+// 否则用户会觉得「点了没反应」。模板本身首屏已注入，可以先把面板滑出来。
+function showSettingsLoading(panel) {
+    if (!panel || panel.querySelector('.settings-loading-mask')) return;
+    const mask = document.createElement('div');
+    mask.className = 'settings-loading-mask';
+    mask.innerHTML = '<span class="settings-loading-spinner" aria-hidden="true"></span><span>正在加载设置…</span>';
+    panel.appendChild(mask);
+}
+
+function hideSettingsLoading(panel) {
+    if (!panel) return;
+    const mask = panel.querySelector('.settings-loading-mask');
+    if (mask && mask.parentNode) mask.parentNode.removeChild(mask);
+}
+
 // UI相关函数
 function toggleSettings(e) {
     // 强化的密码保护校验 - 防止绕过
@@ -20,18 +36,45 @@ function toggleSettings(e) {
     // 阻止事件冒泡，防止触发document的点击事件
     e && e.stopPropagation();
 
-    // 设置面板逻辑由组件按需加载：首次打开时先等脚本就绪，
-    // 避免点到尚未绑定事件的控件；已加载时 Promise 立即 resolve。
-    if (window.Components && typeof window.Components.ensure === 'function') {
-        window.Components.ensure('settings').then(function () {
-            const target = document.getElementById('settingsPanel');
-            if (target) target.classList.toggle('show');
-        });
+    const panel = document.getElementById('settingsPanel');
+    if (!panel) return;
+
+    const willShow = !panel.classList.contains('show');
+    panel.classList.toggle('show');
+    // 收起时不涉及加载
+    if (!willShow) return;
+
+    // 逻辑脚本已就绪：面板内容本来就是最新的，直接开
+    if (typeof window.renderSourceList === 'function') {
+        hideSettingsLoading(panel);
         return;
     }
 
-    const panel = document.getElementById('settingsPanel');
-    if (panel) panel.classList.toggle('show');
+    // 脚本还没加载：先开面板，加载超过 150ms 才显示遮罩，避免一闪而过
+    let maskTimer = setTimeout(function () { showSettingsLoading(panel); }, 150);
+
+    if (!window.Components || typeof window.Components.ensure !== 'function') {
+        clearTimeout(maskTimer);
+        hideSettingsLoading(panel);
+        return;
+    }
+
+    let settled = false;
+    const finish = function (failed) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(maskTimer);
+        hideSettingsLoading(panel);
+        if (failed) showToast('设置面板加载失败，请刷新页面重试', 'error');
+    };
+
+    // 兜底：脚本长时间不返回时先撤掉遮罩，别让面板一直锁着
+    const guardTimer = setTimeout(function () { finish(false); }, 8000);
+
+    window.Components.ensure('settings').then(function () {
+        clearTimeout(guardTimer);
+        finish(typeof window.renderSourceList !== 'function');
+    });
 }
 
 // 改进的Toast显示函数 - 支持队列显示多个Toast

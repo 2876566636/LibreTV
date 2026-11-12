@@ -9,7 +9,7 @@
     'use strict';
 
     // 版本号唯一来源
-    var APP_VERSION = '2026.11.11';
+    var APP_VERSION = '2026.11.12';
 
     window.APP_VERSION = APP_VERSION;
 

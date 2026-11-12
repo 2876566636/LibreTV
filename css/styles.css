@@ -177,6 +177,44 @@ button, .card-hover {
     border-radius: 4px;
 }
 
+/* 逻辑脚本按需加载时的加载态：慢网下给反馈，避免「点了没反应」 */
+.settings-loading-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(17, 17, 17, 0.72);
+    color: #a1a1aa;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    /* 不拦截点击：关闭按钮等仍可点 */
+    pointer-events: none;
+}
+
+.settings-loading-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: var(--primary-color, #ff3c78);
+    border-radius: 50%;
+    animation: settings-spin 0.8s linear infinite;
+}
+
+@keyframes settings-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-loading-spinner {
+        animation-duration: 2.4s;
+    }
+}
+
 .search-button {
     background: var(--primary-color);
     color: var(--text-color);
