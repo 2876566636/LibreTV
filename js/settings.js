@@ -157,9 +157,20 @@
 
     function visibleSources() {
         const hideAdult = isYellowFilterOn();
+        // 过滤开启时所有 18+ 源都隐藏，不区分内置还是导入的，
+        // 否则导入的源还留在列表里，看起来像「过滤对它没生效」。
         return allSources().filter(function (source) {
-            return !(hideAdult && source.type === 'builtin' && source.adult);
+            return !(hideAdult && source.adult);
         });
+    }
+
+    // 「全部启用」能操作的范围：过滤开着时 18+ 源不允许启用，先排除掉，
+    // 否则启用后又被规则停用，按钮文案和实际状态会对不上。
+    function selectableSources() {
+        const visible = visibleSources();
+        return isYellowFilterOn()
+            ? visible.filter(function (source) { return !source.adult; })
+            : visible;
     }
 
     // ---------------- 渲染 ----------------
@@ -233,27 +244,35 @@
         });
 
         if (!sources.length) {
-            container.innerHTML = '<div class="settings-empty">' + (keyword ? '没有匹配的视频源' : '暂无视频源，点击「+ 添加」新增') + '</div>';
+            // 源全被过滤隐藏时别显示「暂无视频源」，否则用户以为源丢了
+            const hiddenByFilter = allSources().length > 0 && isYellowFilterOn();
+            const emptyText = keyword
+                ? '没有匹配的视频源'
+                : (hiddenByFilter ? '18+ 源已被「黄色内容过滤」隐藏，关闭过滤后可见' : '暂无视频源，点击「+ 添加」新增');
+            container.innerHTML = '<div class="settings-empty">' + emptyText + '</div>';
         } else {
             container.innerHTML = sources.map(sourceRowHtml).join('');
         }
 
         updateCounts();
+        syncYellowFilterRow();
     }
 
     function updateCounts() {
         const enabledEl = document.getElementById('enabledSourceCount');
         const totalEl = document.getElementById('totalSourceCount');
         const toggleBtn = document.getElementById('toggleAllSourcesBtn');
-        const sources = allSources();
+        // 统计口径与列表保持一致：过滤开启时被隐藏的内置 18+ 源不计入，
+        // 否则「已启用 3/18」而用户只看得到 10 行，数字对不上。
+        const sources = visibleSources();
         const enabledCount = sources.filter(function (source) { return isEnabled(source.id); }).length;
 
         if (enabledEl) enabledEl.textContent = String(enabledCount);
         if (totalEl) totalEl.textContent = String(sources.length);
 
         if (toggleBtn) {
-            const visible = visibleSources();
-            const allEnabled = visible.length > 0 && visible.every(function (source) { return isEnabled(source.id); });
+            const selectable = selectableSources();
+            const allEnabled = selectable.length > 0 && selectable.every(function (source) { return isEnabled(source.id); });
             toggleBtn.textContent = allEnabled ? '全部停用' : '全部启用';
         }
     }
@@ -281,6 +300,16 @@
     }
 
     function setSourceEnabled(id, enabled) {
+        const source = allSources().find(function (item) { return item.id === id; });
+
+        // 过滤开着时 18+ 源不允许启用：开关优先级高于视频源
+        if (enabled && source && source.adult && isYellowFilterOn()) {
+            const input = document.querySelector('.source-row[data-id="' + id + '"] input[data-action="toggle"]');
+            if (input) input.checked = false;
+            toast('请先关闭「黄色内容过滤」再启用 18+ 源', 'warning');
+            return;
+        }
+
         if (enabled) {
             if (!isEnabled(id)) selectedAPIs.push(id);
         } else {
@@ -292,7 +321,9 @@
         if (row) row.classList.toggle('is-disabled', !enabled);
 
         updateCounts();
-        if (enabled) enforceAdultRule();
+        // 停用源之后也要重算：最后一个 18+ 源被关掉时要立刻给过滤开关解锁，
+        // 否则 disabled 会一直留着，用户没法再打开过滤。
+        enforceAdultRule();
     }
 
     function moveSource(id, direction) {
@@ -323,10 +354,10 @@
     }
 
     function toggleAllSources() {
-        const visible = visibleSources();
-        const allEnabled = visible.length > 0 && visible.every(function (source) { return isEnabled(source.id); });
+        const selectable = selectableSources();
+        const allEnabled = selectable.length > 0 && selectable.every(function (source) { return isEnabled(source.id); });
 
-        selectedAPIs = allEnabled ? [] : visible.map(function (source) { return source.id; });
+        selectedAPIs = allEnabled ? [] : selectable.map(function (source) { return source.id; });
         persistEnabled();
         renderSourceList();
         enforceAdultRule();
@@ -475,10 +506,20 @@
             const current = customAPIs[editingCustomIndex] || {};
             customAPIs[editingCustomIndex] = Object.assign({}, current, { name: name, url: url, detail: detail, isAdult: isAdult });
             toast('已更新视频源：' + name, 'success');
+
+            // 把一个启用中的源改成 18+ 时同理：别让过滤规则立刻把它踢掉
+            if (isAdult && isEnabled('custom_' + editingCustomIndex) && isYellowFilterOn()) {
+                localStorage.setItem('yellowFilterEnabled', 'false');
+            }
         } else {
             customAPIs.push({ name: name, url: url, detail: detail, isAdult: isAdult });
             const newId = 'custom_' + (customAPIs.length - 1);
             if (!isEnabled(newId)) selectedAPIs.push(newId);
+
+            // 与批量导入一致：新增 18+ 源时关掉过滤，保证新源是启用状态
+            if (isAdult && isYellowFilterOn()) {
+                localStorage.setItem('yellowFilterEnabled', 'false');
+            }
 
             const order = getOrder();
             if (order.indexOf(newId) === -1) order.push(newId);
@@ -618,6 +659,7 @@
         const existing = existingUrlKeys();
         const added = [];
         let duplicated = 0;
+        let addedAdult = 0;
 
         items.forEach(function (item) {
             const key = urlKey(item.url);
@@ -632,12 +674,13 @@
                 detail: item.detail || '',
                 isAdult: !!item.adult
             });
+            if (item.adult) addedAdult++;
             added.push('custom_' + (customAPIs.length - 1));
         });
 
         if (!added.length) {
             toast(duplicated ? '没有新增视频源，' + duplicated + ' 个地址已存在' : '没有可导入的视频源', 'info');
-            return { added: 0, duplicated: duplicated };
+            return { added: 0, duplicated: duplicated, addedAdult: 0 };
         }
 
         localStorage.setItem('customAPIs', JSON.stringify(customAPIs));
@@ -646,6 +689,14 @@
             if (!isEnabled(id)) selectedAPIs.push(id);
         });
 
+        // 用户主动导入 18+ 源就是要用它：把过滤关掉，让新源保持启用状态，
+        // 否则刚导入就被过滤规则停用，看起来像「导入没成功」。
+        let filterTurnedOff = false;
+        if (addedAdult > 0 && isYellowFilterOn()) {
+            localStorage.setItem('yellowFilterEnabled', 'false');
+            filterTurnedOff = true;
+        }
+
         const order = getOrder();
         added.forEach(function (id) {
             if (order.indexOf(id) === -1) order.push(id);
@@ -653,14 +704,21 @@
         persistOrder(order);
         persistEnabled();
         renderSourceList();
-        enforceAdultRule();
-        return { added: added.length, duplicated: duplicated };
+        // 静默执行：提示统一由 reportImport 说明，避免一次导入弹两条
+        enforceAdultRule({ silent: true });
+        return {
+            added: added.length,
+            duplicated: duplicated,
+            addedAdult: addedAdult,
+            filterTurnedOff: filterTurnedOff
+        };
     }
 
     function reportImport(applied, invalid) {
         if (!applied.added) return;
         const skipped = applied.duplicated + (invalid || 0);
-        toast('已导入 ' + applied.added + ' 个视频源' + (skipped ? '，跳过 ' + skipped + ' 个' : ''), 'success');
+        let message = '已导入 ' + applied.added + ' 个视频源' + (skipped ? '，跳过 ' + skipped + ' 个' : '');
+        toast(message, 'success');
     }
 
     function openTextImportDialog(prefill) {
@@ -933,7 +991,9 @@
     async function probeSource(source) {
         const started = performance.now();
         const controller = new AbortController();
-        const timer = setTimeout(function () { controller.abort(); }, 6000);
+        // 采集站本身要 2-10s，6s 会把「慢但能用」的源误判成超时；
+        // 这里比代理的上游超时（默认 12s）多留 3s 余量。
+        const timer = setTimeout(function () { controller.abort(); }, 15000);
 
         try {
             let target = PROXY_URL + encodeURIComponent(buildProbeUrl(source.url));
@@ -1016,30 +1076,79 @@
 
     // ---------------- 内容过滤 ----------------
 
-    function hasEnabledAdultSource() {
+    // 内置源本身不含 18+，只有用户自己添加了 adult: true 的源才需要过滤相关设置
+    function hasAnyAdultSource() {
         return allSources().some(function (source) {
-            return source.adult && isEnabled(source.id);
+            return source.adult;
         });
     }
 
-    function enforceAdultRule() {
+    // 兼容旧版模板：拿不到 id 时从开关往上找 .settings-row，
+    // 避免浏览器用缓存的旧 settings-panel.js 时这一行藏不掉。
+    function yellowFilterRowEl() {
+        const byId = document.getElementById('yellowFilterRow');
+        if (byId) return byId;
+        const toggle = document.getElementById('yellowFilterToggle');
+        return toggle && toggle.closest ? toggle.closest('.settings-row') : null;
+    }
+
+    function syncYellowFilterRow() {
+        const row = yellowFilterRowEl();
+        if (!row) return;
+        const show = hasAnyAdultSource();
+        row.classList.toggle('hidden', !show);
+        // 内联样式一起同步，优先级最高，不受 Tailwind 运行时生成顺序影响
+        row.style.display = show ? '' : 'none';
+    }
+
+    function enabledAdultSourceIds() {
+        return allSources().filter(function (source) {
+            return source.adult && isEnabled(source.id);
+        }).map(function (source) { return source.id; });
+    }
+
+    function yellowFilterDescText(on) {
+        return on
+            ? '过滤"伦理片"等内容；开启状态下 18+ 源无法启用，已启用的会被自动停用'
+            : '过滤"伦理片"等内容；关闭后可在视频源里启用 18+ 源';
+    }
+
+    // 过滤开关优先级高于视频源：开关永远可操作，
+    // 只要它处于开启状态，就不允许任何 18+ 源保持启用。
+    function enforceAdultRule(options) {
         const toggle = document.getElementById('yellowFilterToggle');
         const desc = document.getElementById('yellowFilterDesc');
-        const locked = hasEnabledAdultSource();
-
         if (!toggle) return;
 
-        if (locked) {
-            const wasOn = isYellowFilterOn();
-            toggle.checked = false;
-            toggle.disabled = true;
-            localStorage.setItem('yellowFilterEnabled', 'false');
-            if (desc) desc.textContent = '已启用 18+ 源，过滤自动关闭；停用这些源后可重新开启';
-            // 过滤刚被关闭时，让被隐藏的内置 18+ 源立即出现在列表里
-            if (wasOn) renderSourceList();
-        } else {
-            toggle.disabled = false;
-            if (desc) desc.textContent = '过滤"伦理片"等内容；启用 18+ 源时自动关闭';
+        syncYellowFilterRow();
+
+        // 一个 18+ 源都没有时这一行是隐藏的，此时过滤必须是开启状态，
+        // 否则会留下「设置项看不见、但数据确实被过滤」的黑盒。
+        if (!hasAnyAdultSource() && !isYellowFilterOn()) {
+            localStorage.setItem('yellowFilterEnabled', 'true');
+            renderSourceList();
+        }
+
+        const filterOn = isYellowFilterOn();
+        toggle.disabled = false;
+        toggle.checked = filterOn;
+        if (desc) desc.textContent = yellowFilterDescText(filterOn);
+
+        if (!filterOn) return;
+
+        const adultIds = enabledAdultSourceIds();
+        if (!adultIds.length) return;
+
+        selectedAPIs = getEnabledIds().filter(function (id) {
+            return adultIds.indexOf(id) === -1;
+        });
+        persistEnabled();
+        renderSourceList();
+
+        if (!options || !options.silent) {
+            toast(adultIds.length > 1
+                ? '已自动停用 ' + adultIds.length + ' 个 18+ 源'
+                : '已自动停用 18+ 源', 'info');
         }
     }
 
@@ -1122,10 +1231,13 @@
             yellowToggle.checked = isYellowFilterOn();
             yellowToggle.addEventListener('change', function (event) {
                 localStorage.setItem('yellowFilterEnabled', String(event.target.checked));
+                // 先重渲染，让被过滤隐藏/释放的内置 18+ 源立刻反映到列表
                 renderSourceList();
                 enforceAdultRule();
             });
         }
+        // 开关初始化后立刻同步一次显隐，避免依赖后续 renderSourceList 的调用时机
+        syncYellowFilterRow();
 
         const adToggle = document.getElementById('adFilterToggle');
         if (adToggle) {
@@ -1372,7 +1484,8 @@
         });
 
         switchSettingsTab(localStorage.getItem(ACTIVE_TAB_KEY) || 'sources');
-        enforceAdultRule();
+        // 打开面板时静默应用一次：过滤开着就顺手停用 18+ 源，不弹提示
+        enforceAdultRule({ silent: true });
     }
 
     // 暴露给 HTML 内联事件与 app.js

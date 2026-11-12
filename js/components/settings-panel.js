@@ -139,10 +139,12 @@
             <div class="settings-section">
                 <div class="settings-section-title">内容</div>
 
-                <div class="settings-row">
+                <!-- 默认隐藏：没有 18+ 源时这一行不展示。
+                     内联 style 兜底，避免 .settings-row{display:flex} 盖掉 .hidden -->
+                <div class="settings-row hidden" id="yellowFilterRow" style="display:none">
                     <div class="settings-row-text">
                         <div class="settings-row-title">黄色内容过滤</div>
-                        <p class="settings-row-desc" id="yellowFilterDesc">过滤"伦理片"等内容；启用 18+ 源时自动关闭</p>
+                        <p class="settings-row-desc" id="yellowFilterDesc">过滤"伦理片"等内容；开启状态下 18+ 源无法启用，已启用的会被自动停用</p>
                     </div>
                     <label class="settings-switch">
                         <input type="checkbox" id="yellowFilterToggle">
@@ -258,6 +260,6 @@
 
     window.Components.define('settings', {
         template: template,
-        script: 'js/settings.js?v=20261111-1'
+        script: 'js/settings.js?v=20261112-3'
     });
 })();

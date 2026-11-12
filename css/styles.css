@@ -901,18 +901,84 @@ body {
 
 /* 确保Toast显示在顶层并有适当的转换效果 */
 #toast {
-    z-index: 9999; /* 确保显示在最上层 */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    min-width: 200px;
-    text-align: center;
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 20px);
+    left: 50%;
+    z-index: 9999; /* 实际由内联样式提到最高层，这里兜底 */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* 先按内容自然宽度撑开，超过 max-width 才换行；
+       少了这行 flex + min-width:0 会让窄屏下的宽度塌缩、文字被折碎 */
+    width: max-content;
+    max-width: min(92vw, 460px);
+    padding: 11px 16px 11px 14px;
+    border-radius: 14px;
+    background: rgba(24, 24, 27, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+    color: #f4f4f5;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    text-align: left;
+    overflow: hidden;
     pointer-events: none; /* 防止toast阻挡点击事件 */
-    transform: translateX(-50%) translateY(0);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translate(-50%, -14px) scale(0.96);
+    transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+}
+
+#toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
 }
 
 #toast.hidden {
     opacity: 0;
-    transform: translateX(-50%) translateY(-100%);
+    transform: translate(-50%, -14px) scale(0.96);
+}
+
+#toast .app-toast-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#toast .app-toast-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+#toast #toastMessage {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    word-break: break-word;
+    /* 避免长文案最后一行只剩一个括号或标点 */
+    text-wrap: pretty;
+}
+
+#toast.app-toast--success .app-toast-icon { color: #4ade80; background: rgba(74, 222, 128, 0.16); }
+#toast.app-toast--error .app-toast-icon { color: #f87171; background: rgba(248, 113, 113, 0.16); }
+#toast.app-toast--warning .app-toast-icon { color: #fbbf24; background: rgba(251, 191, 36, 0.16); }
+#toast.app-toast--info .app-toast-icon { color: #60a5fa; background: rgba(96, 165, 250, 0.16); }
+
+@media (prefers-reduced-motion: reduce) {
+    #toast {
+        transition: opacity 0.15s linear;
+        transform: translate(-50%, 0);
+    }
+
+    #toast.is-visible {
+        transform: translate(-50%, 0);
+    }
 }
 
 

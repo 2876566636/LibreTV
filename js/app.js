@@ -255,7 +255,8 @@ async function search() {
         }
 
         // 处理搜索结果过滤：如果启用了黄色内容过滤，则过滤掉分类含有敏感内容的项目
-        const yellowFilterEnabled = localStorage.getItem('yellowFilterEnabled') === 'true';
+        // 与设置页的 isYellowFilterOn() 保持一致：默认开启，只有显式存 'false' 才算关闭
+        const yellowFilterEnabled = localStorage.getItem('yellowFilterEnabled') !== 'false';
         if (yellowFilterEnabled) {
             const banned = ['伦理片', '福利', '里番动漫', '门事件', '萝莉少女', '制服诱惑', '国产传媒', 'cosplay', '黑丝诱惑', '无码', '日本无码', '有码', '日本有码', 'SWAG', '网红主播', '色情片', '同性片', '福利视频', '福利片'];
             allResults = allResults.filter(item => {

@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import os from 'os';
+import dns from 'dns';
+import http from 'http';
+import https from 'https';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -17,7 +20,8 @@ const config = {
   port: process.env.PORT || 8080,
   password: process.env.PASSWORD || '',
   corsOrigin: process.env.CORS_ORIGIN || '*',
-  timeout: parseInt(process.env.REQUEST_TIMEOUT || '5000'),
+  // 采集站响应普遍 2-10s，5s 太紧会把正常但偏慢的源判成超时
+  timeout: parseInt(process.env.REQUEST_TIMEOUT || '12000'),
   maxRetries: parseInt(process.env.MAX_RETRIES || '2'),
   cacheMaxAge: process.env.CACHE_MAX_AGE || '1d',
   userAgent: process.env.USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -29,6 +33,77 @@ const log = (...args) => {
     console.log('[DEBUG]', ...args);
   }
 };
+
+/* ------------------------- DNS 兜底解析 -------------------------
+ * 部分采集站域名被运营商/公共 DNS 投毒或拉黑，系统解析会返回 0.0.0.0 / :: 或直接 ENOENT
+ * （浏览器因为默认开启「安全 DNS」所以打得开，Node 走系统 DNS 就失败），
+ * 代理层表现为 500 / 请求失败。这里在系统解析不可用时回落到 DoH 再解析一次。
+ */
+const DOH_ENDPOINT = process.env.DOH_ENDPOINT || 'https://doh.pub/dns-query';
+const DOH_CACHE_TTL = parseInt(process.env.DOH_CACHE_TTL || '300', 10) * 1000;
+const dohCache = new Map(); // hostname -> { ips, expires }
+
+function isUsableAddress(address) {
+  return !!address && address !== '0.0.0.0' && address !== '::' && address !== '::1';
+}
+
+async function resolveViaDoh(hostname) {
+  const now = Date.now();
+  const cached = dohCache.get(hostname);
+  if (cached && cached.expires > now) return cached.ips;
+
+  const url = `${DOH_ENDPOINT}?name=${encodeURIComponent(hostname)}&type=A`;
+  const response = await fetch(url, { headers: { accept: 'application/dns-json' } });
+  if (!response.ok) throw new Error(`DoH 请求失败: ${response.status}`);
+
+  const data = await response.json();
+  const ips = (data.Answer || [])
+    .filter((item) => item && item.type === 1 && isUsableAddress(item.data))
+    .map((item) => item.data);
+
+  if (ips.length) dohCache.set(hostname, { ips, expires: now + DOH_CACHE_TTL });
+  return ips;
+}
+
+const systemLookup = dns.lookup;
+
+function dohLookup(hostname, options, callback) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+
+  // Node 20+ 默认开启 autoSelectFamily，会以 all:true 调用 lookup，
+  // 此时必须回数组；否则 net 层会报 “Invalid IP address: undefined”。
+  const wantAll = !!(options && options.all);
+  const wantFamily = options && (options.family === 4 || options.family === 6) ? options.family : 0;
+
+  const finish = (error, list) => {
+    if (error) return callback(error);
+    const filtered = wantFamily ? list.filter((item) => item.family === wantFamily) : list;
+    if (!filtered.length) return callback(new Error(`DNS 解析失败: ${hostname}`));
+    if (wantAll) return callback(null, filtered);
+    callback(null, filtered[0].address, filtered[0].family);
+  };
+
+  systemLookup(hostname, { all: true, family: 0 }, (err, addresses) => {
+    const usable = (addresses || []).filter((item) => isUsableAddress(item.address));
+    if (usable.length) return finish(null, usable);
+
+    resolveViaDoh(hostname).then((ips) => {
+      if (ips.length) return finish(null, ips.map((ip) => ({ address: ip, family: 4 })));
+      finish(err || new Error(`DNS 解析失败: ${hostname}`));
+    }).catch((dohError) => {
+      log(`DoH 解析失败 ${hostname}: ${dohError.message}`);
+      finish(err || dohError);
+    });
+  });
+}
+
+// 不复用连接：上游是 Cloudflare 背后的采集站，空闲连接常被对端 RST，
+// 复用到坏连接会一直挂到超时（表现为偶发 12s 超时）。
+const proxyHttpAgent = new http.Agent({ lookup: dohLookup });
+const proxyHttpsAgent = new https.Agent({ lookup: dohLookup });
 
 const app = express();
 
@@ -201,11 +276,17 @@ app.get('/proxy/:encodedUrl', async (req, res) => {
           responseType: 'stream',
           timeout: config.timeout,
           headers: requestHeaders,
+          // 系统 DNS 解析不出来时用 DoH 兜底（见 dohLookup）
+          httpAgent: proxyHttpAgent,
+          httpsAgent: proxyHttpsAgent,
           // 代理服务自身直连目标；避免系统 HTTP_PROXY（如本地代理软件）把 HTTPS 请求发错端口
           proxy: false
         });
       } catch (error) {
-        if (retries < maxRetries) {
+        // 超时重试没有意义：一次 12s 已经逼近前端 15s 的等待上限，
+        // 再重试一次只会让前端先 abort，反而把所有慢源都判成超时。
+        const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
+        if (!isTimeout && retries < maxRetries) {
           retries++;
           log(`重试请求 (${retries}/${maxRetries}): ${targetUrl}`);
           return makeRequest();

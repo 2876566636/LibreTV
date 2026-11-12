@@ -18,16 +18,15 @@ let BUILTIN_API_SITES = [
     { name: '非凡影视', url: 'http://ffzy5.tv/api.php/provide/vod' },
     { name: '360资源', url: 'https://360zy.com/api.php/provide/vod' },
     { name: '卧龙资源', url: 'https://wolongzyw.com/api.php/provide/vod' },
-    { name: '豆瓣资源', url: 'https://caiji.dbzy5.com/api.php/provide/vod' },
     { name: '量子资源站', url: 'https://cj.lziapi.com/api.php/provide/vod/' },
-    { name: 'CK资源', url: 'https://www.ckzy1.com', adult: true },
-    { name: 'jkun资源', url: 'https://jkunzyapi.com', adult: true },
-    { name: '百万资源', url: 'https://api.bwzym3u8.com', adult: true },
-    { name: 'souav资源', url: 'https://api.souavzy.vip', adult: true },
-    { name: '155资源', url: 'https://155api.com', adult: true },
-    { name: 'lsb资源', url: 'https://apilsbzy1.com', adult: true },
-    { name: '黄色仓库', url: 'https://hsckzy.vip', adult: true },
-    { name: '玉兔资源', url: 'https://yutuzy10.com', adult: true }
+    // { name: 'CK资源', url: 'https://www.ckzy1.com', adult: true },
+    // { name: 'jkun资源', url: 'https://jkunzyapi.com', adult: true },
+    // { name: '百万资源', url: 'https://api.bwzym3u8.com', adult: true },
+    // { name: 'souav资源', url: 'https://api.souavzy.vip', adult: true },
+    // { name: '155资源', url: 'https://155api.com', adult: true },
+    // { name: 'lsb资源', url: 'https://apilsbzy1.com', adult: true },
+    // { name: '黄色仓库', url: 'https://hsckzy.vip', adult: true },
+    // { name: '玉兔资源', url: 'https://yutuzy10.com', adult: true }
 ];
 
 window.BUILTIN_API_SITES = BUILTIN_API_SITES;

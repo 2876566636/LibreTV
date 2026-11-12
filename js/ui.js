@@ -37,29 +37,46 @@ function toggleSettings(e) {
 // 改进的Toast显示函数 - 支持队列显示多个Toast
 const toastQueue = [];
 let isShowingToast = false;
+let toastTimerId = null;
 
-function showToast(message, type = 'error') {
-    // 首先确保toast元素存在
+// 图标统一用 24x24 stroke 图标，颜色跟随类型色
+const TOAST_ICONS = {
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>'
+};
+
+const TOAST_DURATION = 3000;
+
+function ensureToastElement() {
     let toast = document.getElementById('toast');
-    let toastMessage = document.getElementById('toastMessage');
+    // 结构不对（首次创建 / 旧版本带进度条的结构）就重建
+    const needsRebuild = !toast
+        || !toast.querySelector('.app-toast-icon')
+        || !!toast.querySelector('.app-toast-progress');
 
-    // 如果toast元素不存在，创建它
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast';
-        toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-50 opacity-0';
-        toast.style = 'z-index: 2147483647'
-        toastMessage = document.createElement('p');
-        toastMessage.id = 'toastMessage';
-        toast.appendChild(toastMessage);
-
-        document.body.appendChild(toast);
+    if (needsRebuild) {
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast';
+            document.body.appendChild(toast);
+        }
+        toast.className = 'app-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.innerHTML = '<span class="app-toast-icon" aria-hidden="true"></span>'
+            + '<p id="toastMessage"></p>';
     }
 
-    // 将新的toast添加到队列
+    toast.style.zIndex = '2147483647';
+    return toast;
+}
+
+function showToast(message, type = 'error') {
+    ensureToastElement();
     toastQueue.push({ message, type });
 
-    // 如果当前没有显示中的toast，则开始显示
     if (!isShowingToast) {
         showNextToast();
     }
@@ -74,34 +91,27 @@ function showNextToast() {
     isShowingToast = true;
     const { message, type } = toastQueue.shift();
 
-    const toast = document.getElementById('toast');
+    const toast = ensureToastElement();
     const toastMessage = document.getElementById('toastMessage');
+    const icon = toast.querySelector('.app-toast-icon');
+    const kind = TOAST_ICONS[type] ? type : 'error';
 
-    const bgColors = {
-        'error': 'bg-red-500',
-        'success': 'bg-green-500',
-        'info': 'bg-blue-500',
-        'warning': 'bg-yellow-500'
-    };
+    toast.className = 'app-toast app-toast--' + kind;
+    toast.style.zIndex = '2147483647';
 
-    const bgColor = bgColors[type] || bgColors.error;
-    toast.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 ${bgColor} text-white z-50`;
-    toastMessage.textContent = message;
+    if (icon) icon.innerHTML = TOAST_ICONS[kind];
+    if (toastMessage) toastMessage.textContent = message;
 
-    // 显示提示
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(-50%) translateY(0)';
+    // 重启入场动画：先摘掉类并强制回流，否则连续两条会看不到动画
+    toast.classList.remove('is-visible');
+    void toast.offsetWidth;
+    toast.classList.add('is-visible');
 
-    // 3秒后自动隐藏
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(-50%) translateY(-100%)';
-
-        // 等待动画完成后显示下一个toast
-        setTimeout(() => {
-            showNextToast();
-        }, 300);
-    }, 3000);
+    clearTimeout(toastTimerId);
+    toastTimerId = setTimeout(() => {
+        toast.classList.remove('is-visible');
+        setTimeout(showNextToast, 260);
+    }, TOAST_DURATION);
 }
 
 // 添加显示/隐藏 loading 的函数
